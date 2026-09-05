@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #1b1a17;
+  --color-paper: #f6f1e7;
+  --color-accent: #b5442b;
+  --color-accent-soft: #f2d9d0;
+  --color-sage: #5c6b4e;
+}
+
+:root {
+  color-scheme: light dark;
+  --bg: var(--color-paper);
+  --fg: var(--color-ink);
+  --card: #fffdf8;
+  --muted: #6b6559;
+  --line: #e2d9c8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15140f;
+    --fg: #ece6da;
+    --card: #1e1c17;
+    --muted: #a39c8d;
+    --line: #2d2a22;
+  }
+}
+
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display { font-family: var(--font-display); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; }
+.muted { color: var(--muted); }
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-primary { background: var(--color-accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--fg); }
+.btn-ghost:hover:not(:disabled) { background: var(--color-accent-soft); color: var(--color-ink); }
+.chip { @apply inline-block rounded-full px-3 py-1 text-xs; background: var(--color-accent-soft); color: var(--color-ink); }
+.input {
+  @apply w-full rounded-xl px-4 py-3 text-sm outline-none;
+  background: var(--card); border: 1px solid var(--line); color: var(--fg);
+}
+.input:focus { border-color: var(--color-accent); }

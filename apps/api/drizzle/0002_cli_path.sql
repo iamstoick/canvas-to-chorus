@@ -1,0 +1,1 @@
+ALTER TABLE "provider_settings" ADD COLUMN "cli_path" text;

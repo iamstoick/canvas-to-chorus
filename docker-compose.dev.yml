@@ -1,0 +1,34 @@
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: deps
+    command: sh -c "npm run build -w @artlyrics/shared && npm run migrate -w @artlyrics/api && npm run dev -w @artlyrics/api"
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages/shared:/app/packages/shared
+      - uploads:/data/uploads
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: deps
+    command: sh -c "npm run build -w @artlyrics/shared && npm run dev -w @artlyrics/web -- --host 0.0.0.0"
+    environment:
+      VITE_API_PROXY_TARGET: http://api:3000
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages/shared:/app/packages/shared
+    ports:
+      - "5173:5173"

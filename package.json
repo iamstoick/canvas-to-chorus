@@ -1,0 +1,27 @@
+{
+  "name": "artlyrics",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "build": "npm run build -w @artlyrics/shared && npm run build -w @artlyrics/api && npm run build -w @artlyrics/web",
+    "claude-proxy": "node scripts/claude-proxy.js",
+    "dev:db": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db",
+    "dev": "npm run build -w @artlyrics/shared && concurrently -n api,web -c blue,magenta \"npm run dev -w @artlyrics/api\" \"npm run dev -w @artlyrics/web\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm run db:generate -w @artlyrics/api",
+    "db:migrate": "npm run migrate -w @artlyrics/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -409,3 +409,20 @@ To use the local Claude Code login from the Dockerized API, a host-side proxy wa
 - Settings UI gained the "Claude CLI Proxy" option with Base URL + CLI Path fields, matching the
   reference screenshot. Default model for both CLI providers is now `haiku`.
 - Default provider inside Docker is now `claude-proxy` (unless an API key is present).
+
+## 19. Vercel readiness (added 2026-09-05)
+
+The first Vercel build (Root Directory `apps/api`) failed with "Cannot find module '@artlyrics/shared'"
+because the API compiled before the shared workspace package was built, plus a switch that was only
+non-exhaustive while that type was unresolved. Fixes and additions:
+
+- `prebuild` scripts in `apps/api` and `apps/web` build `packages/shared` first.
+- Exhaustive `providerFactory` switch with a `never` default.
+- `apps/api/api/index.js` serverless entry exporting the Express app from `dist/`; `apps/api/vercel.json`
+  rewrites all paths to it, sets `maxDuration`, includes `drizzle/**`, and schedules the retention cron.
+- `GET /api/jobs/retention` guarded by `CRON_SECRET`; `setInterval` retention still runs in Docker.
+- `Storage` gained a Vercel Blob implementation, selected when `BLOB_READ_WRITE_TOKEN` is set.
+- Pool size via `DB_POOL_MAX` (2 on Vercel), SSL enabled for Neon URLs. Default provider on Vercel is
+  Anthropic. `apps/web/vercel.json` provides the SPA fallback and a same-origin `/api` rewrite to the API
+  project.
+- Dev DB host port is now `DB_PORT` (5433 locally, because an SSH tunnel occupies 5432 on this machine).

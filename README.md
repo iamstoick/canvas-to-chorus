@@ -85,6 +85,35 @@ npm run db:migrate
 npm run dev                               # api :3000 + web :5173 (proxying /api)
 ```
 
+## Deploy to Vercel
+
+Two Vercel projects from this repo, both with **Root Directory** set (Vercel installs the workspace from the
+repo root automatically). `prebuild` scripts build `packages/shared` first, so the earlier
+"Cannot find module '@artlyrics/shared'" build error is gone.
+
+**API project** (Root Directory `apps/api`, Framework Preset *Other*):
+
+1. Storage → Create Database → **Neon**. Vercel injects `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED`.
+2. Storage → Create → **Blob**. Vercel injects `BLOB_READ_WRITE_TOKEN`; uploads switch to Blob automatically.
+3. Environment variables: `ANTHROPIC_API_KEY` (the only provider that works from Vercel; it becomes the
+   default there), optionally `ANTHROPIC_MODEL`, `RETENTION_DAYS`, and `CRON_SECRET` for the retention cron.
+4. Apply the schema once from your machine, then copy data if you want it:
+
+   ```bash
+   DATABASE_URL="<DATABASE_URL_UNPOOLED>" npm run db:migrate
+   docker compose exec -T db pg_dump -U app --data-only --no-owner --exclude-schema=drizzle artlyrics \
+     | psql "<DATABASE_URL_UNPOOLED>"
+   ```
+
+`apps/api/vercel.json` rewrites every path to the serverless entry `apps/api/api/index.js`, which exports
+the Express app built into `dist/`. It sets `maxDuration` to 300 s (lower to 60 on plans without Fluid
+Compute) and schedules `GET /api/jobs/retention` daily. Note Vercel caps request bodies at 4.5 MB, so
+uploads above that fail before reaching the app.
+
+**Web project** (Root Directory `apps/web`, Framework Preset *Vite*): edit `apps/web/vercel.json` and replace
+`REPLACE-WITH-YOUR-API-PROJECT.vercel.app` with the API project's domain. The rewrite keeps `/api` same-origin
+so the session cookie works; the second rewrite is the SPA fallback.
+
 ## Commands
 
 | Command | What it does |
@@ -135,6 +164,9 @@ Errors use one envelope: `{ "error": { "code", "message" } }`.
 | `DATABASE_URL` | – | Postgres connection string |
 | `UPLOAD_DIR` | `./data/uploads` | Where original images are stored |
 | `RETENTION_DAYS` | `30` | Delete artworks older than this (0 disables) |
+| `DB_POOL_MAX` | `10` (`2` on Vercel) | Postgres pool size per process |
+| `BLOB_READ_WRITE_TOKEN` | – | When set, artworks are stored in Vercel Blob instead of `UPLOAD_DIR` |
+| `CRON_SECRET` | – | Bearer token required by `GET /api/jobs/retention` |
 | `RATE_UPLOADS_PER_HOUR` | `20` | Per-session upload limit |
 | `RATE_MODEL_CALLS_PER_HOUR` | `60` | Per-session limit on question + compose calls |
 | `DISABLE_REFUSAL_FALLBACKS` | – | Set `1` to turn off server-side refusal fallbacks |

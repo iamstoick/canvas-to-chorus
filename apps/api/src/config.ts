@@ -15,6 +15,8 @@ function pickDefaultProvider(): ProviderName {
   const explicit = process.env.DEFAULT_PROVIDER as ProviderName | undefined;
   if (explicit) return explicit;
   if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  // Serverless hosts have neither a local CLI nor a reachable host proxy.
+  if (process.env.VERCEL) return "anthropic";
   if (!inDocker && resolveClaudeCli(process.env.CLAUDE_CLI_PATH)) return "claude-cli";
   if (inDocker) return "claude-proxy";
   return "ollama";

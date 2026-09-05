@@ -5,3 +5,5 @@ data
 .env
 .git
 docs
+**/vercel.json
+apps/api/api

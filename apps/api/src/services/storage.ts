@@ -4,8 +4,9 @@ import { randomUUID } from "node:crypto";
 import { config } from "../config.js";
 
 /**
- * Minimal file storage abstraction. Local disk today; swap for S3/GCS by
- * implementing the same three functions.
+ * Minimal file storage abstraction. Local disk for Docker/dev, Vercel Blob when
+ * BLOB_READ_WRITE_TOKEN is present. `storagePath` is whatever the backend needs to
+ * find the file again (a relative path, or a blob URL).
  */
 export interface Storage {
   save(bytes: Buffer, ext: string): Promise<string>;
@@ -19,9 +20,11 @@ function safeJoin(root: string, rel: string): string {
   return abs;
 }
 
+const objectKey = (ext: string) => path.posix.join(new Date().toISOString().slice(0, 10), `${randomUUID()}.${ext}`);
+
 export const localStorage: Storage = {
   async save(bytes, ext) {
-    const rel = path.join(new Date().toISOString().slice(0, 10), `${randomUUID()}.${ext}`);
+    const rel = objectKey(ext);
     const abs = safeJoin(config.uploadDir, rel);
     await mkdir(path.dirname(abs), { recursive: true });
     await writeFile(abs, bytes);
@@ -36,3 +39,25 @@ export const localStorage: Storage = {
     });
   },
 };
+
+/** Vercel Blob. Objects get an unguessable random suffix; the stored path is the blob URL. */
+export const vercelBlobStorage: Storage = {
+  async save(bytes, ext) {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(`artworks/${objectKey(ext)}`, bytes, { access: "public", addRandomSuffix: true, contentType: `image/${ext === "jpg" ? "jpeg" : ext}` });
+    return blob.url;
+  },
+  async read(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw Object.assign(new Error(`blob fetch failed: ${res.status}`), { code: "ENOENT" });
+    return Buffer.from(await res.arrayBuffer());
+  },
+  async remove(url) {
+    const { del } = await import("@vercel/blob");
+    await del(url);
+  },
+};
+
+export function selectStorage(): Storage {
+  return process.env.BLOB_READ_WRITE_TOKEN ? vercelBlobStorage : localStorage;
+}

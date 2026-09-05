@@ -6,6 +6,7 @@ import { session } from "./middleware/session.js";
 import { artworksRouter } from "./routes/artworks.js";
 import { composeRouter } from "./routes/compose.js";
 import { healthRouter } from "./routes/health.js";
+import { jobsRouter } from "./routes/jobs.js";
 import { questionsRouter } from "./routes/questions.js";
 import type { ProviderFactory } from "./services/provider.js";
 import { settingsRouter } from "./routes/settings.js";
@@ -26,6 +27,7 @@ export function createApp({ db, storage, providers }: AppDeps) {
   app.use(session);
 
   app.use("/api", healthRouter(db));
+  app.use("/api", jobsRouter(db, storage));
   app.use("/api", artworksRouter(db, storage));
   app.use("/api", settingsRouter(db, providers));
   app.use("/api", questionsRouter(db, storage, providers));

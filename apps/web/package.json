@@ -14,10 +14,14 @@
   "dependencies": {
     "@artlyrics/shared": "*",
     "@tanstack/react-query": "^5.66.0",
+    "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.2",
+    "file-type": "22.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.3.5",
-    "react-router-dom": "^6.29.0"
+    "react-router-dom": "^7.18.3",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.7",

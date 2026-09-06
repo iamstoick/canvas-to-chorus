@@ -87,17 +87,19 @@ npm run dev                               # api :3000 + web :5173 (proxying /api
 
 ## Deploy to Vercel
 
-Two Vercel projects from this repo, both with **Root Directory** set (Vercel installs the workspace from the
-repo root automatically). `prebuild` scripts build `packages/shared` first, so the earlier
-"Cannot find module '@artlyrics/shared'" build error is gone.
+**Recommended: one project, repo root.** `vercel.json` at the repo root builds everything, serves the
+React app from `apps/web/dist`, and runs the Express API as one serverless function (`api/index.js`)
+behind `/api/*`. Same domain, so the session cookie just works.
 
-**API project** (Root Directory `apps/api`, Framework Preset *Other*):
-
-1. Storage → Create Database → **Neon**. Vercel injects `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED`.
-2. Storage → Create → **Blob**. Vercel injects `BLOB_READ_WRITE_TOKEN`; uploads switch to Blob automatically.
-3. Environment variables: `ANTHROPIC_API_KEY` (the only provider that works from Vercel; it becomes the
-   default there), optionally `ANTHROPIC_MODEL`, `RETENTION_DAYS`, and `CRON_SECRET` for the retention cron.
-4. Apply the schema once from your machine, then copy data if you want it:
+1. Vercel → Add New → Project → import this repo. Leave **Root Directory empty**. Framework Preset *Other*.
+   Build Command and Output Directory come from `vercel.json`.
+2. Storage → Create → **Neon** (Postgres) and **Blob**. Vercel injects `DATABASE_URL`, `DATABASE_URL_UNPOOLED`
+   and `BLOB_READ_WRITE_TOKEN`.
+3. Environment variables: `ANTHROPIC_API_KEY` (the only provider that works from Vercel; it is the default
+   there), optionally `ANTHROPIC_MODEL`, `RETENTION_DAYS`, `CRON_SECRET` (for the daily retention cron).
+4. Settings → Deployment Protection → Vercel Authentication → *Disabled* (or previews only), otherwise
+   visitors are redirected to a Vercel login.
+5. Apply the schema once from your machine, then copy data if you want it:
 
    ```bash
    DATABASE_URL="<DATABASE_URL_UNPOOLED>" npm run db:migrate
@@ -105,14 +107,16 @@ repo root automatically). `prebuild` scripts build `packages/shared` first, so t
      | psql "<DATABASE_URL_UNPOOLED>"
    ```
 
-`apps/api/vercel.json` rewrites every path to the serverless entry `apps/api/api/index.js`, which exports
-the Express app built into `dist/`. It sets `maxDuration` to 300 s (lower to 60 on plans without Fluid
-Compute) and schedules `GET /api/jobs/retention` daily. Note Vercel caps request bodies at 4.5 MB, so
-uploads above that fail before reaching the app.
+Open the project domain: the UI is at `/`, health at `/api/health`. `maxDuration` is 300 s (lower to 60 on
+plans without Fluid Compute). Vercel caps request bodies at 4.5 MB, so uploads above that fail before
+reaching the app.
 
-**Web project** (Root Directory `apps/web`, Framework Preset *Vite*): edit `apps/web/vercel.json` and replace
-`REPLACE-WITH-YOUR-API-PROJECT.vercel.app` with the API project's domain. The rewrite keeps `/api` same-origin
-so the session cookie works; the second rewrite is the SPA fallback.
+If you already created a project with Root Directory `apps/api`, change Root Directory to empty in
+Settings → General and redeploy. Its environment variables carry over.
+
+**Alternative: two projects.** `apps/api/vercel.json` and `apps/web/vercel.json` still support deploying
+the API (Root Directory `apps/api`) and the UI (Root Directory `apps/web`, Vite preset) separately. Set the
+API domain in the web rewrite. The `prebuild` scripts build `packages/shared` first in either layout.
 
 ## Commands
 

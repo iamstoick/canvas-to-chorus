@@ -8,3 +8,5 @@ docs
 **/vercel.json
 apps/api/api
 apps/api/public
+api
+vercel.json

@@ -2,9 +2,24 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
   "buildCommand": "npm run build",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
+  ],
   "functions": {
-    "api/index.js": { "maxDuration": 300, "memory": 1024, "includeFiles": "drizzle/**" }
+    "api/index.js": {
+      "maxDuration": 300,
+      "memory": 1024,
+      "includeFiles": "drizzle/**"
+    }
   },
-  "crons": [{ "path": "/api/jobs/retention", "schedule": "0 4 * * *" }]
+  "crons": [
+    {
+      "path": "/api/jobs/retention",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }

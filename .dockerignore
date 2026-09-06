@@ -7,3 +7,4 @@ data
 docs
 **/vercel.json
 apps/api/api
+apps/api/public

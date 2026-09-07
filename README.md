@@ -143,6 +143,9 @@ All routes are under `/api` and scoped to an anonymous `httpOnly` session cookie
 | `DELETE` | `/artworks/:id` | removes the artwork, its rows, and its file |
 | `POST` | `/artworks/:id/questions` | `{ question }`; vision Q&A; `409 question_limit` after five |
 | `POST` | `/artworks/:id/compose` | analysis + lyrics + style as one structured-output call; each call adds a version |
+| `POST` | `/analyses/:id/songs` | `{ model?, instrumental? }`; starts a Suno generation from that analysis's lyrics + style |
+| `GET` | `/songs/:id` | song status + tracks; refreshes from Suno while running |
+| `POST` | `/songs/callback?token=…` | Suno completion webhook (token derived from the API key) |
 | `GET` | `/settings` | this session's provider settings (env defaults if none saved) |
 | `PUT` | `/settings` | `{ provider, model, baseUrl? }` |
 | `POST` | `/settings/test` | connectivity + model + vision check for the submitted settings |
@@ -171,9 +174,22 @@ Errors use one envelope: `{ "error": { "code", "message" } }`.
 | `DB_POOL_MAX` | `10` (`2` on Vercel) | Postgres pool size per process |
 | `BLOB_READ_WRITE_TOKEN` | – | When set, artworks are stored in Vercel Blob instead of `UPLOAD_DIR` |
 | `CRON_SECRET` | – | Bearer token required by `GET /api/jobs/retention` |
+| `SUNO_API_KEY` | – | Enables the "Generate the song" card via sunoapi.org |
+| `SUNO_MODEL` | `V4_5` | Default Suno model (`V4`, `V4_5`, `V4_5PLUS`, `V5`, `V5_5`) |
+| `PUBLIC_BASE_URL` | derived from the request | Public origin for Suno's callback URL |
 | `RATE_UPLOADS_PER_HOUR` | `20` | Per-session upload limit |
 | `RATE_MODEL_CALLS_PER_HOUR` | `60` | Per-session limit on question + compose calls |
 | `DISABLE_REFUSAL_FALLBACKS` | – | Set `1` to turn off server-side refusal fallbacks |
+
+## Song generation (Suno)
+
+On the result page, **Generate the song** sends the lyrics (with `[Verse]`/`[Chorus]` tags) as Suno's custom-mode
+`prompt`, the recommended style as `style` (genre, sub-genres, BPM, key, instruments, vocal style; reference
+artists are excluded because Suno rejects artist names), and the title. Suno returns a task id; the page polls
+`GET /api/songs/:id` every 5 s, which asks sunoapi.org for the task while it runs. The completion webhook at
+`/api/songs/callback` updates the row too when the deployment is publicly reachable. Each generation yields two
+takes with streaming and MP3 URLs plus cover art. Suno-hosted URLs expire after some time. Failures such as
+`SENSITIVE_WORD_ERROR` are shown inline with a hint to regenerate the lyrics.
 
 ## How the model calls work
 

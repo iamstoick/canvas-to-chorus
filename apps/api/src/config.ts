@@ -50,6 +50,13 @@ export const config = {
     model: process.env.OLLAMA_MODEL ?? "qwen3:latest",
     timeoutMs: Number(process.env.OLLAMA_TIMEOUT_MS ?? 10 * 60 * 1000),
   },
+  suno: {
+    apiKey: process.env.SUNO_API_KEY || null,
+    baseUrl: process.env.SUNO_BASE_URL ?? "https://api.sunoapi.org",
+    model: process.env.SUNO_MODEL ?? "V4_5",
+    /** Public origin of this deployment for Suno's completion callback. Derived from the request when unset. */
+    publicBaseUrl: process.env.PUBLIC_BASE_URL?.replace(/\/+$/, "") || null,
+  },
   rateLimits: {
     uploadsPerHour: Number(process.env.RATE_UPLOADS_PER_HOUR ?? 20),
     modelCallsPerHour: Number(process.env.RATE_MODEL_CALLS_PER_HOUR ?? process.env.RATE_CLAUDE_PER_HOUR ?? 60),

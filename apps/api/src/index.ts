@@ -4,9 +4,10 @@ import { db, pool } from "./db/client.js";
 import { scheduleRetention } from "./jobs/retention.js";
 import { providerFactory } from "./services/providers.js";
 import { selectStorage } from "./services/storage.js";
+import { sunoClient } from "./services/suno.js";
 
 const storage = selectStorage();
-const app = createApp({ db, storage, providers: providerFactory });
+const app = createApp({ db, storage, providers: providerFactory, suno: sunoClient() });
 
 const server = app.listen(config.port, () => {
   console.log(`api listening on :${config.port} (${config.env}), default provider=${config.defaultProvider}`);

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   integer,
@@ -11,7 +12,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { ArtworkAnalysis, Lyrics, StyleRecommendation } from "@artlyrics/shared";
+import type { ArtworkAnalysis, Lyrics, SongTrack, StyleRecommendation } from "@artlyrics/shared";
 
 export const artworks = pgTable(
   "artworks",
@@ -78,3 +79,27 @@ export const providerSettings = pgTable("provider_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type ProviderSettingsRow = typeof providerSettings.$inferSelect;
+
+export const songs = pgTable(
+  "songs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => analyses.id, { onDelete: "cascade" }),
+    artworkId: uuid("artwork_id")
+      .notNull()
+      .references(() => artworks.id, { onDelete: "cascade" }),
+    taskId: text("task_id").notNull().unique(),
+    status: text("status").notNull().default("pending"),
+    sunoStatus: text("suno_status"),
+    model: text("model").notNull(),
+    instrumental: boolean("instrumental").notNull().default(false),
+    tracks: jsonb("tracks").$type<SongTrack[]>().notNull().default([]),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("songs_analysis_idx").on(t.analysisId, t.createdAt), index("songs_artwork_idx").on(t.artworkId)],
+);
+export type SongRow = typeof songs.$inferSelect;

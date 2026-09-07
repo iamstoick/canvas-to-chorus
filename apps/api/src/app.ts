@@ -10,15 +10,18 @@ import { jobsRouter } from "./routes/jobs.js";
 import { questionsRouter } from "./routes/questions.js";
 import type { ProviderFactory } from "./services/provider.js";
 import { settingsRouter } from "./routes/settings.js";
+import { songsRouter } from "./routes/songs.js";
+import type { SunoClient } from "./services/suno.js";
 import type { Storage } from "./services/storage.js";
 
 export interface AppDeps {
   db: Db;
   storage: Storage;
   providers: ProviderFactory;
+  suno: SunoClient;
 }
 
-export function createApp({ db, storage, providers }: AppDeps) {
+export function createApp({ db, storage, providers, suno }: AppDeps) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
@@ -32,6 +35,7 @@ export function createApp({ db, storage, providers }: AppDeps) {
   app.use("/api", settingsRouter(db, providers));
   app.use("/api", questionsRouter(db, storage, providers));
   app.use("/api", composeRouter(db, storage, providers));
+  app.use("/api", songsRouter(db, suno));
 
   app.use("/api", (_req, res) => res.status(404).json({ error: { code: "not_found", message: "Route not found" } }));
   app.use(errorHandler);

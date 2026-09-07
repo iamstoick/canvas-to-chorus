@@ -9,6 +9,7 @@ import { normalizeUpload } from "../services/images.js";
 import type { Storage } from "../services/storage.js";
 import { toAnalysisRecord, toArtworkSummary, toQuestionAnswer } from "./serializers.js";
 import { SUGGESTED_QUESTIONS } from "../prompts/analyze.js";
+import { songsByAnalysis } from "./songs.js";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -53,14 +54,16 @@ export function artworksRouter(db: Db, storage: Storage) {
   r.get("/artworks/:id", async (req, res, next) => {
     try {
       const art = await loadOwnedArtwork(db, req.params.id, req.sessionId);
-      const [qs, an] = await Promise.all([
+      const [qs, an, songMap] = await Promise.all([
         db.select().from(questions).where(eq(questions.artworkId, art.id)).orderBy(asc(questions.position)),
         db.select().from(analyses).where(eq(analyses.artworkId, art.id)).orderBy(desc(analyses.createdAt)),
+        songsByAnalysis(db, art.id),
       ]);
       res.json({
         artwork: toArtworkSummary(art),
         questions: qs.map(toQuestionAnswer),
-        analyses: an.map(toAnalysisRecord),
+        analyses: an.map((a) => toAnalysisRecord(a, songMap.get(a.id) ?? [])),
+        songsEnabled: Boolean(process.env.SUNO_API_KEY),
         suggestedQuestions: SUGGESTED_QUESTIONS,
       });
     } catch (e) {

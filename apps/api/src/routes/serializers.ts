@@ -1,4 +1,4 @@
-import type { AnalysisRecord, ArtworkSummary, QuestionAnswer } from "@artlyrics/shared";
+import type { AnalysisRecord, ArtworkSummary, QuestionAnswer, SongRecord } from "@artlyrics/shared";
 import type { AnalysisRow, ArtworkRow, QuestionRow } from "../db/schema.js";
 
 export const toArtworkSummary = (a: ArtworkRow): ArtworkSummary => ({
@@ -20,11 +20,12 @@ export const toQuestionAnswer = (q: QuestionRow): QuestionAnswer => ({
   createdAt: q.createdAt.toISOString(),
 });
 
-export const toAnalysisRecord = (r: AnalysisRow): AnalysisRecord => ({
+export const toAnalysisRecord = (r: AnalysisRow, songs: SongRecord[] = []): AnalysisRecord => ({
   id: r.id,
   composition: { analysis: r.analysis, lyrics: r.lyrics, style: r.style },
   model: r.model,
   inputTokens: r.inputTokens,
   outputTokens: r.outputTokens,
   createdAt: r.createdAt.toISOString(),
+  songs,
 });

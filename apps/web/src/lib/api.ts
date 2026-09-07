@@ -1,4 +1,4 @@
-import type { AnalysisRecord, ArtworkDetail, ArtworkSummary, ProviderSettings, ProviderSettingsUpdate, ProviderTestResult, QuestionAnswer } from "@artlyrics/shared";
+import type { AnalysisRecord, ArtworkDetail, ArtworkSummary, CreateSongRequest, ProviderSettings, ProviderSettingsUpdate, ProviderTestResult, QuestionAnswer, SongRecord } from "@artlyrics/shared";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -26,7 +26,7 @@ async function handle<T>(res: Response): Promise<T> {
   throw new ApiClientError(res.status, code, message);
 }
 
-export type ArtworkDetailResponse = ArtworkDetail & { suggestedQuestions: string[] };
+export type ArtworkDetailResponse = ArtworkDetail & { suggestedQuestions: string[]; songsEnabled: boolean };
 export type AskResponse = QuestionAnswer & { remaining: number };
 
 export const api = {
@@ -83,6 +83,16 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(update),
     }).then((r) => handle<ProviderTestResult>(r)),
+
+  createSong: (analysisId: string, body: CreateSongRequest) =>
+    fetch(`${BASE}/analyses/${analysisId}/songs`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => handle<SongRecord>(r)),
+
+  getSong: (id: string) => fetch(`${BASE}/songs/${id}`, { credentials: "include" }).then((r) => handle<SongRecord>(r)),
 
   deleteArtwork: (id: string) => fetch(`${BASE}/artworks/${id}`, { method: "DELETE", credentials: "include" }).then((r) => handle<void>(r)),
 };

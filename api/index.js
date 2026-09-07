@@ -4,7 +4,8 @@ import { createApp } from "../apps/api/dist/app.js";
 import { db } from "../apps/api/dist/db/client.js";
 import { providerFactory } from "../apps/api/dist/services/providers.js";
 import { selectStorage } from "../apps/api/dist/services/storage.js";
+import { sunoClient } from "../apps/api/dist/services/suno.js";
 
-const app = createApp({ db, storage: selectStorage(), providers: providerFactory });
+const app = createApp({ db, storage: selectStorage(), providers: providerFactory, suno: sunoClient() });
 
 export default app;

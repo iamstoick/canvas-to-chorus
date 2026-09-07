@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { Lyrics } from "@artlyrics/shared";
+import { lyricsToText, type Lyrics } from "@artlyrics/shared";
+export { lyricsToText };
 
 const LABEL: Record<string, string> = {
   verse: "Verse",
@@ -8,18 +9,6 @@ const LABEL: Record<string, string> = {
   bridge: "Bridge",
   outro: "Outro",
 };
-
-export function lyricsToText(l: Lyrics): string {
-  const counts: Record<string, number> = {};
-  const body = l.sections
-    .map((s) => {
-      counts[s.type] = (counts[s.type] ?? 0) + 1;
-      const label = s.type === "verse" ? `Verse ${counts[s.type]}` : LABEL[s.type] ?? s.type;
-      return `[${label}]\n${s.lines.join("\n")}`;
-    })
-    .join("\n\n");
-  return `${l.title}\n\n${body}`;
-}
 
 export default function LyricsCard({ lyrics }: { lyrics: Lyrics }) {
   const [copied, setCopied] = useState(false);

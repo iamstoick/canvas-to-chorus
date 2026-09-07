@@ -426,3 +426,16 @@ non-exhaustive while that type was unresolved. Fixes and additions:
   Anthropic. `apps/web/vercel.json` provides the SPA fallback and a same-origin `/api` rewrite to the API
   project.
 - Dev DB host port is now `DB_PORT` (5433 locally, because an SSH tunnel occupies 5432 on this machine).
+
+## 20. Song generation with Suno (added 2026-09-06)
+
+- `songs` table (migration `0003_songs`): analysis + artwork FKs, Suno `task_id`, our status
+  (pending/text/first/success/failed), raw Suno status, model, instrumental flag, tracks JSON, error.
+- `services/suno.ts`: request builder with per-model field limits, status mapping, callback parsing, and a
+  fetch-injectable client for `POST /api/v1/generate` and `GET /api/v1/generate/record-info`.
+- Routes: create (`POST /api/analyses/:id/songs`), poll (`GET /api/songs/:id`, refreshes from Suno at most
+  every 3 s while non-terminal), webhook (`POST /api/songs/callback?token=…`, token = sha256 of the key).
+- Artwork detail now includes `songs` per analysis and `songsEnabled`.
+- UI: `SongCard` on the result page with model picker, instrumental toggle, progress states, two audio
+  players with cover art and MP3 links. Polls every 5 s until terminal.
+- `lyricsToText` moved to `@artlyrics/shared` so the server formats lyrics exactly like the UI's export.

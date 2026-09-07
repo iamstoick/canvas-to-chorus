@@ -30,6 +30,9 @@ services:
       CLAUDE_CLI_MODEL: ${CLAUDE_CLI_MODEL:-haiku}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:latest}
+      SUNO_API_KEY: ${SUNO_API_KEY:-}
+      SUNO_MODEL: ${SUNO_MODEL:-V4_5}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       UPLOAD_DIR: /data/uploads
       RETENTION_DAYS: ${RETENTION_DAYS:-30}
     volumes:

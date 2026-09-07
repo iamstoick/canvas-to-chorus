@@ -89,6 +89,8 @@ export const AnalysisRecord = z.object({
   inputTokens: z.number().int().nullable(),
   outputTokens: z.number().int().nullable(),
   createdAt: z.string(),
+  /** Songs generated from this analysis, newest first. */
+  songs: z.array(z.lazy(() => SongRecord)).default([]),
 });
 export type AnalysisRecord = z.infer<typeof AnalysisRecord>;
 
@@ -151,3 +153,41 @@ export const PROVIDER_DEFAULTS: Record<ProviderName, { model: string; baseUrl: s
   anthropic: { model: "claude-opus-5", baseUrl: null },
   ollama: { model: "qwen3:latest", baseUrl: "http://localhost:11434" },
 };
+
+// ---------- Song generation (Suno via sunoapi.org) ----------
+
+export const SunoModel = z.enum(["V4", "V4_5", "V4_5PLUS", "V5", "V5_5"]);
+export type SunoModel = z.infer<typeof SunoModel>;
+
+export const SongStatus = z.enum(["pending", "text", "first", "success", "failed"]);
+export type SongStatus = z.infer<typeof SongStatus>;
+
+export const SongTrack = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  audioUrl: z.string().nullable(),
+  streamAudioUrl: z.string().nullable(),
+  imageUrl: z.string().nullable(),
+  duration: z.number().nullable(),
+});
+export type SongTrack = z.infer<typeof SongTrack>;
+
+export const SongRecord = z.object({
+  id: z.string().uuid(),
+  analysisId: z.string().uuid(),
+  taskId: z.string(),
+  status: SongStatus,
+  model: SunoModel,
+  instrumental: z.boolean(),
+  tracks: z.array(SongTrack),
+  error: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type SongRecord = z.infer<typeof SongRecord>;
+
+export const CreateSongRequest = z.object({
+  model: SunoModel.optional(),
+  instrumental: z.boolean().optional(),
+});
+export type CreateSongRequest = z.infer<typeof CreateSongRequest>;

@@ -15,7 +15,8 @@ const db = { execute: vi.fn(async () => []) } as unknown as Db;
 const storage: Storage = { save: vi.fn(), read: vi.fn(), remove: vi.fn() };
 const provider: AnalysisProvider = { name: "claude-cli", answerQuestion: vi.fn(), compose: vi.fn(), test: vi.fn() };
 const providers: ProviderFactory = () => provider;
-const app = createApp({ db, storage, providers });
+const suno = { configured: false, generate: vi.fn(), getTask: vi.fn() };
+const app = createApp({ db, storage, providers, suno });
 
 describe("health", () => {
   it("reports db ok", async () => {
@@ -106,5 +107,16 @@ describe("settings validation", () => {
   it("rejects a malformed base URL", async () => {
     const res = await request(app).put("/api/settings").send({ provider: "ollama", model: "qwen3", baseUrl: "not a url" });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("songs", () => {
+  it("callback without a valid token is rejected", async () => {
+    const res = await request(app).post("/api/songs/callback?token=nope").send({ code: 200, data: { callbackType: "complete", task_id: "t" } });
+    expect(res.status).toBe(401);
+  });
+  it("404 for a non-UUID analysis id", async () => {
+    const res = await request(app).post("/api/analyses/not-a-uuid/songs").send({});
+    expect(res.status).toBe(404);
   });
 });

@@ -9,7 +9,8 @@ import { normalizeUpload } from "../services/images.js";
 import type { Storage } from "../services/storage.js";
 import { toAnalysisRecord, toArtworkSummary, toQuestionAnswer } from "./serializers.js";
 import { SUGGESTED_QUESTIONS } from "../prompts/analyze.js";
-import { songsByAnalysis } from "./songs.js";
+import { songsByAnalysis, storedTrackPaths } from "./songs.js";
+import { listArtworks } from "./admin.js";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -51,6 +52,15 @@ export function artworksRouter(db: Db, storage: Storage) {
     }
   });
 
+  /** Everything in the caller's session, newest first. */
+  r.get("/artworks", async (req, res, next) => {
+    try {
+      res.json({ sessionId: req.sessionId, artworks: await listArtworks(db, req.sessionId) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   r.get("/artworks/:id", async (req, res, next) => {
     try {
       const art = await loadOwnedArtwork(db, req.params.id, req.sessionId);
@@ -87,8 +97,9 @@ export function artworksRouter(db: Db, storage: Storage) {
   r.delete("/artworks/:id", async (req, res, next) => {
     try {
       const art = await loadOwnedArtwork(db, req.params.id, req.sessionId);
+      const trackPaths = await storedTrackPaths(db, [art.id]);
       await db.delete(artworks).where(eq(artworks.id, art.id));
-      await storage.remove(art.storagePath);
+      await Promise.all([art.storagePath, ...trackPaths].map((p) => storage.remove(p).catch(() => {})));
       res.status(204).end();
     } catch (e) {
       next(e);

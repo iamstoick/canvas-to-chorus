@@ -165,10 +165,16 @@ export type SongStatus = z.infer<typeof SongStatus>;
 export const SongTrack = z.object({
   id: z.string(),
   title: z.string().nullable(),
+  /** Suno-hosted MP3. Temporary: expires after some days. */
   audioUrl: z.string().nullable(),
+  /** Suno-hosted stream. Only works while the task is running. */
   streamAudioUrl: z.string().nullable(),
   imageUrl: z.string().nullable(),
   duration: z.number().nullable(),
+  /** Our copy of the MP3 in app storage (relative path or blob URL). */
+  storedPath: z.string().nullable().default(null),
+  /** What the player should use: our copy when available, else Suno's MP3, else the stream. */
+  playbackUrl: z.string().nullable().default(null),
 });
 export type SongTrack = z.infer<typeof SongTrack>;
 
@@ -180,6 +186,8 @@ export const SongRecord = z.object({
   model: SunoModel,
   instrumental: z.boolean(),
   tracks: z.array(SongTrack),
+  /** True once every finished track has been copied into app storage. */
+  persisted: z.boolean().default(false),
   error: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -191,3 +199,27 @@ export const CreateSongRequest = z.object({
   instrumental: z.boolean().optional(),
 });
 export type CreateSongRequest = z.infer<typeof CreateSongRequest>;
+
+// ---------- Listing / admin ----------
+
+export const ArtworkListItem = ArtworkSummary.extend({
+  questionCount: z.number().int(),
+  analysisCount: z.number().int(),
+  songCount: z.number().int(),
+  latestTitle: z.string().nullable(),
+});
+export type ArtworkListItem = z.infer<typeof ArtworkListItem>;
+
+export const SessionSummary = z.object({
+  sessionId: z.string().uuid(),
+  artworkCount: z.number().int(),
+  questionCount: z.number().int(),
+  analysisCount: z.number().int(),
+  songCount: z.number().int(),
+  provider: z.string().nullable(),
+  model: z.string().nullable(),
+  firstSeen: z.string().nullable(),
+  lastSeen: z.string().nullable(),
+  current: z.boolean(),
+});
+export type SessionSummary = z.infer<typeof SessionSummary>;

@@ -73,7 +73,17 @@ export function mapTrack(t: RawTrack): SongTrack {
     streamAudioUrl: t.stream_audio_url ?? t.streamAudioUrl ?? null,
     imageUrl: t.image_url ?? t.imageUrl ?? null,
     duration: typeof t.duration === "number" ? t.duration : null,
+    storedPath: null,
+    playbackUrl: null,
   };
+}
+
+/** Fresh data from Suno never carries our storedPath; carry it over from what we already have. */
+export function mergeTracks(previous: SongTrack[], fresh: SongTrack[]): SongTrack[] {
+  return fresh.map((t, i) => {
+    const old = previous.find((p) => p.id && p.id === t.id) ?? previous[i];
+    return { ...t, storedPath: old?.storedPath ?? null };
+  });
 }
 
 /** Maps Suno task status to ours. CALLBACK_EXCEPTION means only the webhook failed; audio may exist. */

@@ -439,3 +439,20 @@ non-exhaustive while that type was unresolved. Fixes and additions:
 - UI: `SongCard` on the result page with model picker, instrumental toggle, progress states, two audio
   players with cover art and MP3 links. Polls every 5 s until terminal.
 - `lyricsToText` moved to `@artlyrics/shared` so the server formats lyrics exactly like the UI's export.
+
+## 21. Song persistence (added 2026-09-08)
+
+Generated songs stopped playing a day later: Suno's `stream_audio_url` returns an empty body once the task
+completes, and the player preferred it; the `audio_url` lives on a "tempfile" host and expires as well.
+Fixes: `playbackUrl` computed server-side (our copy → Suno MP3 → stream), `persistTracks` copies each finished
+MP3 into `Storage` on the first poll after success (and after the webhook), tracks carry `storedPath`,
+`GET /api/songs/:id/tracks/:n/audio` serves the copy with Range support, and delete/retention remove the files.
+The UI keeps polling until `persisted` is true and labels the link "Download MP3".
+
+## 22. Gallery and Sessions pages (added 2026-09-08)
+
+- `GET /api/artworks` lists the caller's artworks with counts; `/gallery` renders them as cards.
+- Admin endpoints under `/api/admin/*` guarded by `ADMIN_TOKEN` (503 when unset, 401 on a wrong token):
+  session list with counts and provider, per-session artworks, and a "switch" that rewrites the
+  `al_session` cookie so the admin can browse another session's artworks in the normal UI.
+- `/sessions` page: token prompt (stored in localStorage), table, Preview and Open actions.

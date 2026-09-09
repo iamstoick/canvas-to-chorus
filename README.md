@@ -138,17 +138,23 @@ All routes are under `/api` and scoped to an anonymous `httpOnly` session cookie
 | Method | Path | Notes |
 |---|---|---|
 | `POST` | `/artworks` | multipart `file`; JPEG/PNG/WebP/GIF, 10 MB cap, magic-byte check, EXIF stripped |
+| `GET` | `/artworks` | all artworks in the caller's session with question/composition/song counts |
 | `GET` | `/artworks/:id` | artwork + questions + analyses (newest first) + suggested questions |
 | `GET` | `/artworks/:id/image` | serves the stored image |
 | `DELETE` | `/artworks/:id` | removes the artwork, its rows, and its file |
 | `POST` | `/artworks/:id/questions` | `{ question }`; vision Q&A; `409 question_limit` after five |
 | `POST` | `/artworks/:id/compose` | analysis + lyrics + style as one structured-output call; each call adds a version |
 | `POST` | `/analyses/:id/songs` | `{ model?, instrumental? }`; starts a Suno generation from that analysis's lyrics + style |
-| `GET` | `/songs/:id` | song status + tracks; refreshes from Suno while running |
+| `GET` | `/songs/:id` | song status + tracks; refreshes from Suno while running, then copies MP3s into storage |
+| `GET` | `/songs/:id/tracks/:n/audio` | our stored copy of a take (`audio/mpeg`, supports `Range`) |
 | `POST` | `/songs/callback?token=…` | Suno completion webhook (token derived from the API key) |
 | `GET` | `/settings` | this session's provider settings (env defaults if none saved) |
 | `PUT` | `/settings` | `{ provider, model, baseUrl? }` |
 | `POST` | `/settings/test` | connectivity + model + vision check for the submitted settings |
+| `GET` | `/admin/status` | whether `ADMIN_TOKEN` is configured |
+| `GET` | `/admin/sessions` | every session with activity counts (Bearer `ADMIN_TOKEN`) |
+| `GET` | `/admin/sessions/:id/artworks` | that session's artworks (Bearer `ADMIN_TOKEN`) |
+| `POST` | `/admin/sessions/:id/switch` | sets this browser's session cookie to that session (Bearer `ADMIN_TOKEN`) |
 | `GET` | `/health` | `{ ok, db }` |
 
 Errors use one envelope: `{ "error": { "code", "message" } }`.
@@ -174,12 +180,22 @@ Errors use one envelope: `{ "error": { "code", "message" } }`.
 | `DB_POOL_MAX` | `10` (`2` on Vercel) | Postgres pool size per process |
 | `BLOB_READ_WRITE_TOKEN` | – | When set, artworks are stored in Vercel Blob instead of `UPLOAD_DIR` |
 | `CRON_SECRET` | – | Bearer token required by `GET /api/jobs/retention` |
+| `ADMIN_TOKEN` | – | Enables the **Sessions** page and `/api/admin/*` |
 | `SUNO_API_KEY` | – | Enables the "Generate the song" card via sunoapi.org |
 | `SUNO_MODEL` | `V4_5` | Default Suno model (`V4`, `V4_5`, `V4_5PLUS`, `V5`, `V5_5`) |
 | `PUBLIC_BASE_URL` | derived from the request | Public origin for Suno's callback URL |
 | `RATE_UPLOADS_PER_HOUR` | `20` | Per-session upload limit |
 | `RATE_MODEL_CALLS_PER_HOUR` | `60` | Per-session limit on question + compose calls |
 | `DISABLE_REFUSAL_FALLBACKS` | – | Set `1` to turn off server-side refusal fallbacks |
+
+## Pages
+
+- `/` upload · `/a/:id/questions` · `/a/:id/result`
+- `/gallery` **My artworks**: everything in the current browser session, with links to questions and results.
+- `/sessions` **Sessions** (admin): lists every anonymous session on the server with counts and last activity.
+  *Preview* shows a session's artworks; *Open* switches this browser's session cookie to it so you can browse and
+  play its results. Requires `ADMIN_TOKEN`; the page asks for it once and keeps it in localStorage.
+- `/settings` model provider.
 
 ## Song generation (Suno)
 
@@ -188,7 +204,10 @@ On the result page, **Generate the song** sends the lyrics (with `[Verse]`/`[Cho
 artists are excluded because Suno rejects artist names), and the title. Suno returns a task id; the page polls
 `GET /api/songs/:id` every 5 s, which asks sunoapi.org for the task while it runs. The completion webhook at
 `/api/songs/callback` updates the row too when the deployment is publicly reachable. Each generation yields two
-takes with streaming and MP3 URLs plus cover art. Suno-hosted URLs expire after some time. Failures such as
+takes with cover art. Suno's stream URL stops working once generation completes and its MP3 URL expires after
+some days, so when a song finishes the API copies each MP3 into app storage (local disk or Vercel Blob) and
+serves it from `GET /api/songs/:id/tracks/:n/audio` with Range support. The player uses that copy, falling
+back to Suno's MP3 until the copy exists. Stored takes are removed with the artwork. Failures such as
 `SENSITIVE_WORD_ERROR` are shown inline with a hint to regenerate the lyrics.
 
 ## How the model calls work

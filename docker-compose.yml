@@ -33,6 +33,7 @@ services:
       SUNO_API_KEY: ${SUNO_API_KEY:-}
       SUNO_MODEL: ${SUNO_MODEL:-V4_5}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       UPLOAD_DIR: /data/uploads
       RETENTION_DAYS: ${RETENTION_DAYS:-30}
     volumes:

@@ -27,7 +27,7 @@ function fmtDuration(s: number | null) {
 }
 
 function Track({ track, index }: { track: SongTrack; index: number }) {
-  const src = track.streamAudioUrl ?? track.audioUrl;
+  const src = track.playbackUrl ?? track.audioUrl ?? track.streamAudioUrl;
   return (
     <div className="flex gap-4 items-center">
       {track.imageUrl ? (
@@ -42,9 +42,9 @@ function Track({ track, index }: { track: SongTrack; index: number }) {
           {track.duration != null && <span className="muted"> · {fmtDuration(track.duration)}</span>}
         </p>
         {src ? <audio controls preload="none" src={src} className="w-full" /> : <p className="muted text-xs">Rendering…</p>}
-        {track.audioUrl && (
-          <a className="text-xs underline muted" href={track.audioUrl} target="_blank" rel="noreferrer">
-            Open MP3
+        {(track.storedPath ? track.playbackUrl : track.audioUrl) && (
+          <a className="text-xs underline muted" href={(track.storedPath ? track.playbackUrl : track.audioUrl) ?? undefined} target="_blank" rel="noreferrer">
+            {track.storedPath ? "Download MP3" : "Open MP3 (Suno, temporary)"}
           </a>
         )}
       </div>
@@ -56,20 +56,20 @@ function Track({ track, index }: { track: SongTrack; index: number }) {
 function SongItem({ song, artworkId }: { song: SongRecord; artworkId: string }) {
   const qc = useQueryClient();
   const terminal = song.status === "success" || song.status === "failed";
+  // Poll while Suno works, and once more after success so the server copies the MP3s into our storage.
+  const settled = (s: SongRecord) => s.status === "failed" || (s.status === "success" && s.persisted);
   const live = useQuery({
     queryKey: ["song", song.id],
     queryFn: () => api.getSong(song.id),
     initialData: song,
-    enabled: !terminal,
-    refetchInterval: (q) => {
-      const s = q.state.data?.status;
-      return s === "success" || s === "failed" ? false : 5000;
-    },
+    enabled: !settled(song),
+    refetchInterval: (q) => (q.state.data && settled(q.state.data) ? false : 5000),
+    retry: 2,
   });
   const current = live.data ?? song;
 
   // Keep the artwork detail cache in sync so a page reload shows the finished song.
-  if (current !== song && (current.status === "success" || current.status === "failed")) {
+  if (current !== song && settled(current)) {
     qc.setQueryData<ArtworkDetailResponse>(["artwork", artworkId], (old) =>
       old
         ? { ...old, analyses: old.analyses.map((a) => (a.id === current.analysisId ? { ...a, songs: a.songs.map((s) => (s.id === current.id ? current : s)) } : a)) }
@@ -82,7 +82,7 @@ function SongItem({ song, artworkId }: { song: SongRecord; artworkId: string }) 
       <div className="flex items-center justify-between gap-3 text-xs">
         <span className="chip">{MODEL_LABEL[current.model]}{current.instrumental ? " · instrumental" : ""}</span>
         <span className={current.status === "failed" ? "" : "muted"} style={current.status === "failed" ? { color: "var(--color-accent)" } : undefined}>
-          {STATUS_TEXT[current.status]}
+          {current.status === "success" && !current.persisted ? "Saving copy…" : STATUS_TEXT[current.status]}
           {!terminal && <span className="animate-pulse"> ●</span>}
         </span>
       </div>

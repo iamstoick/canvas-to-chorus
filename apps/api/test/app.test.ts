@@ -120,3 +120,13 @@ describe("songs", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("admin", () => {
+  it("reports disabled status and returns 503 when ADMIN_TOKEN is unset", async () => {
+    const status = await request(app).get("/api/admin/status");
+    expect(status.body).toEqual({ enabled: false });
+    const res = await request(app).get("/api/admin/sessions");
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe("admin_not_configured");
+  });
+});

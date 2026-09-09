@@ -57,6 +57,8 @@ export const config = {
     /** Public origin of this deployment for Suno's completion callback. Derived from the request when unset. */
     publicBaseUrl: process.env.PUBLIC_BASE_URL?.replace(/\/+$/, "") || null,
   },
+  /** Bearer token for the Sessions admin page. Unset = admin endpoints disabled. */
+  adminToken: process.env.ADMIN_TOKEN || null,
   rateLimits: {
     uploadsPerHour: Number(process.env.RATE_UPLOADS_PER_HOUR ?? 20),
     modelCallsPerHour: Number(process.env.RATE_MODEL_CALLS_PER_HOUR ?? process.env.RATE_CLAUDE_PER_HOUR ?? 60),

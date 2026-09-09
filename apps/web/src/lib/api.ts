@@ -1,4 +1,4 @@
-import type { AnalysisRecord, ArtworkDetail, ArtworkSummary, CreateSongRequest, ProviderSettings, ProviderSettingsUpdate, ProviderTestResult, QuestionAnswer, SongRecord } from "@artlyrics/shared";
+import type { AnalysisRecord, ArtworkDetail, ArtworkListItem, ArtworkSummary, CreateSongRequest, ProviderSettings, ProviderSettingsUpdate, ProviderTestResult, QuestionAnswer, SessionSummary, SongRecord } from "@artlyrics/shared";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -93,6 +93,19 @@ export const api = {
     }).then((r) => handle<SongRecord>(r)),
 
   getSong: (id: string) => fetch(`${BASE}/songs/${id}`, { credentials: "include" }).then((r) => handle<SongRecord>(r)),
+
+  listArtworks: () => fetch(`${BASE}/artworks`, { credentials: "include" }).then((r) => handle<{ sessionId: string; artworks: ArtworkListItem[] }>(r)),
+
+  adminStatus: () => fetch(`${BASE}/admin/status`, { credentials: "include" }).then((r) => handle<{ enabled: boolean }>(r)),
+
+  adminSessions: (token: string) =>
+    fetch(`${BASE}/admin/sessions`, { credentials: "include", headers: { Authorization: `Bearer ${token}` } }).then((r) => handle<SessionSummary[]>(r)),
+
+  adminSessionArtworks: (token: string, sessionId: string) =>
+    fetch(`${BASE}/admin/sessions/${sessionId}/artworks`, { credentials: "include", headers: { Authorization: `Bearer ${token}` } }).then((r) => handle<ArtworkListItem[]>(r)),
+
+  adminSwitchSession: (token: string, sessionId: string) =>
+    fetch(`${BASE}/admin/sessions/${sessionId}/switch`, { method: "POST", credentials: "include", headers: { Authorization: `Bearer ${token}` } }).then((r) => handle<{ ok: boolean }>(r)),
 
   deleteArtwork: (id: string) => fetch(`${BASE}/artworks/${id}`, { method: "DELETE", credentials: "include" }).then((r) => handle<void>(r)),
 };

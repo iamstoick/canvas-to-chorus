@@ -47,7 +47,7 @@ describe("buildSunoRequest", () => {
 });
 
 describe("mapStatus", () => {
-  const withAudio = [{ id: "1", title: null, audioUrl: "https://a.mp3", streamAudioUrl: null, imageUrl: null, duration: 120 }];
+  const withAudio = [{ id: "1", title: null, audioUrl: "https://a.mp3", streamAudioUrl: null, imageUrl: null, duration: 120, storedPath: null, playbackUrl: null }];
   it("maps Suno states", () => {
     expect(mapStatus("PENDING", [])).toBe("pending");
     expect(mapStatus("TEXT_SUCCESS", [])).toBe("text");

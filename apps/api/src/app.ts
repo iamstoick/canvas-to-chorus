@@ -3,6 +3,7 @@ import express from "express";
 import type { Db } from "./db/client.js";
 import { errorHandler } from "./middleware/errors.js";
 import { session } from "./middleware/session.js";
+import { adminRouter } from "./routes/admin.js";
 import { artworksRouter } from "./routes/artworks.js";
 import { composeRouter } from "./routes/compose.js";
 import { healthRouter } from "./routes/health.js";
@@ -32,10 +33,11 @@ export function createApp({ db, storage, providers, suno }: AppDeps) {
   app.use("/api", healthRouter(db));
   app.use("/api", jobsRouter(db, storage));
   app.use("/api", artworksRouter(db, storage));
+  app.use("/api", adminRouter(db));
   app.use("/api", settingsRouter(db, providers));
   app.use("/api", questionsRouter(db, storage, providers));
   app.use("/api", composeRouter(db, storage, providers));
-  app.use("/api", songsRouter(db, suno));
+  app.use("/api", songsRouter(db, storage, suno));
 
   app.use("/api", (_req, res) => res.status(404).json({ error: { code: "not_found", message: "Route not found" } }));
   app.use(errorHandler);

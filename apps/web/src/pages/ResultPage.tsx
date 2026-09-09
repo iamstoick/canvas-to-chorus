@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ComposeRequest } from "@artlyrics/shared";
+import GenrePicker from "../components/GenrePicker";
 import AnalysisCard from "../components/AnalysisCard";
 import ErrorNote from "../components/ErrorNote";
 import LyricsCard from "../components/LyricsCard";
@@ -12,16 +14,19 @@ export default function ResultPage() {
   const { id = "" } = useParams();
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showRegen, setShowRegen] = useState(false);
+  const [prefs, setPrefs] = useState<ComposeRequest>({});
 
   const detail = useQuery({ queryKey: ["artwork", id], queryFn: () => api.getArtwork(id) });
 
   const regenerate = useMutation({
-    mutationFn: () => api.compose(id),
+    mutationFn: () => api.compose(id, prefs),
     onSuccess: (record) => {
       qc.setQueryData<ArtworkDetailResponse>(["artwork", id], (old) =>
         old ? { ...old, analyses: [record, ...old.analyses] } : old,
       );
       setSelectedId(record.id);
+      setShowRegen(false);
     },
   });
 
@@ -62,13 +67,43 @@ export default function ResultPage() {
               ))}
             </select>
           )}
-          <button className="btn btn-ghost" onClick={() => regenerate.mutate()} disabled={regenerate.isPending}>
-            {regenerate.isPending ? "Regenerating…" : "Regenerate"}
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              setPrefs({ genre: current.genrePreference ?? "", styleNotes: current.styleNotes ?? "" });
+              setShowRegen((v) => !v);
+            }}
+            disabled={regenerate.isPending}
+          >
+            {regenerate.isPending ? "Regenerating…" : showRegen ? "Close" : "Regenerate"}
           </button>
           <Link className="btn btn-ghost" to="/">New artwork</Link>
         </div>
       </div>
       <ErrorNote error={regenerate.error} />
+
+      {showRegen && (
+        <section className="card p-5 space-y-4">
+          <div>
+            <p className="muted text-xs uppercase tracking-wider">Regenerate</p>
+            <h2 className="font-display text-2xl">Pick a genre, or let the artwork decide</h2>
+          </div>
+          <GenrePicker value={prefs} onChange={setPrefs} disabled={regenerate.isPending} />
+          <div className="flex justify-end">
+            <button className="btn btn-primary" onClick={() => regenerate.mutate()} disabled={regenerate.isPending}>
+              {regenerate.isPending ? "Composing… (20–60 s)" : "Compose again"}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {(current.genrePreference || current.styleNotes) && (
+        <p className="text-xs flex flex-wrap gap-2 items-center">
+          <span className="muted">Your direction:</span>
+          {current.genrePreference && <span className="chip">{current.genrePreference}</span>}
+          {current.styleNotes && <span className="chip">{current.styleNotes}</span>}
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className="space-y-6">

@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { Composition, type ProviderSettings } from "@artlyrics/shared";
+import { Composition, type ComposeRequest, type ProviderSettings } from "@artlyrics/shared";
 import { config } from "../config.js";
 import { unprocessable, upstream } from "../lib/errors.js";
 import { ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
@@ -150,10 +150,10 @@ export function ollamaProvider(settings: Pick<ProviderSettings, "model" | "baseU
       return { answer, model: `ollama/${r.model ?? model}`, usage: usageOf(r) };
     },
 
-    async compose(image: ModelImage, qa: QA[]): Promise<ComposeResult> {
+    async compose(image: ModelImage, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
       const messages: OllamaMessage[] = [
         { role: "system", content: `${COMPOSER_SYSTEM_PROMPT}\n\nRespond with a single JSON object that matches the provided schema. No prose.` },
-        { role: "user", content: buildComposePrompt(qa), images: [image.data] },
+        { role: "user", content: buildComposePrompt(qa, prefs), images: [image.data] },
       ];
       for (let attempt = 0; attempt < 2; attempt++) {
         const r = await chat(messages, COMPOSITION_JSON_SCHEMA);

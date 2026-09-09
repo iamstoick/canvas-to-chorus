@@ -47,21 +47,31 @@ export default function LyricsCard({ lyrics }: { lyrics: Lyrics }) {
           <button className="btn btn-ghost" onClick={download}>Download .txt</button>
         </div>
       </div>
+      {(lyrics.emotional_core || lyrics.point_of_view) && (
+        <div className="mb-5 space-y-1 text-sm italic" style={{ color: "var(--color-sage)" }}>
+          {lyrics.emotional_core && <p>{lyrics.emotional_core}</p>}
+          {lyrics.point_of_view && <p className="muted not-italic text-xs">{lyrics.point_of_view}</p>}
+        </div>
+      )}
       <div className="space-y-5">
         {lyrics.sections.map((s, i) => {
           if (s.type === "verse") verseNo += 1;
           const label = s.type === "verse" ? `Verse ${verseNo}` : LABEL[s.type] ?? s.type;
           return (
             <div key={i}>
-              <p className="muted text-xs uppercase tracking-wider mb-1">{label}</p>
+              <p className="muted text-xs uppercase tracking-wider mb-1">
+                {label}
+                {s.delivery && <span className="normal-case tracking-normal italic opacity-80"> · {s.delivery}</span>}
+              </p>
               <p className={`leading-relaxed whitespace-pre-line ${s.type === "chorus" ? "font-medium" : ""}`}>{s.lines.join("\n")}</p>
             </div>
           );
         })}
       </div>
-      <p className="muted text-sm mt-6 border-t pt-4" style={{ borderColor: "var(--line)" }}>
-        <span className="font-medium">Why these words: </span>{lyrics.rationale}
-      </p>
+      <div className="muted text-sm mt-6 border-t pt-4 space-y-2" style={{ borderColor: "var(--line)" }}>
+        {lyrics.performance_notes && <p><span className="font-medium">How to sing it: </span>{lyrics.performance_notes}</p>}
+        <p><span className="font-medium">Why these words: </span>{lyrics.rationale}</p>
+      </div>
     </section>
   );
 }

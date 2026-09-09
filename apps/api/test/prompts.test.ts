@@ -15,3 +15,16 @@ describe("buildComposePrompt", () => {
     expect(p).toContain("A2: Romantic.");
   });
 });
+
+describe("compose preferences", () => {
+  it("adds genre and style direction when provided", () => {
+    const p = buildComposePrompt([], { genre: "Synthwave", styleNotes: "female vocals" });
+    expect(p).toContain("in the Synthwave genre");
+    expect(p).toContain('primary_genre "Synthwave"');
+    expect(p).toContain('"female vocals"');
+    expect(p).toContain("grounded in the artwork");
+  });
+  it("adds nothing when preferences are empty", () => {
+    expect(buildComposePrompt([], { genre: "", styleNotes: "" })).toBe(buildComposePrompt([]));
+  });
+});

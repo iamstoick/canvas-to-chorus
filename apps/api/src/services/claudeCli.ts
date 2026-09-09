@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod/v4";
-import { Composition, type ProviderSettings } from "@artlyrics/shared";
+import { Composition, type ComposeRequest, type ProviderSettings } from "@artlyrics/shared";
 import { config } from "../config.js";
 import { HttpError, unprocessable, upstream } from "../lib/errors.js";
 import { ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
@@ -216,8 +216,8 @@ function cliBackedProvider(
       return { answer, model: modelOf(name, r, model), usage: usageOf(r) };
     },
 
-    async compose(image: ModelImage, qa: QA[]): Promise<ComposeResult> {
-      const prompt = `${readInstruction(image)}\n\n${buildComposePrompt(qa)}`;
+    async compose(image: ModelImage, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
+      const prompt = `${readInstruction(image)}\n\n${buildComposePrompt(qa, prefs)}`;
       for (let attempt = 0; attempt < 2; attempt++) {
         const r = await run({ systemPrompt: COMPOSER_SYSTEM_PROMPT, prompt, jsonSchema: COMPOSITION_JSON_SCHEMA, image });
         let raw: unknown = r.structured_output;

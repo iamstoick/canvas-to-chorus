@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MAX_QUESTIONS } from "@artlyrics/shared";
+import { MAX_QUESTIONS, type ComposeRequest } from "@artlyrics/shared";
+import GenrePicker from "../components/GenrePicker";
 import ErrorNote from "../components/ErrorNote";
 import QuestionThread from "../components/QuestionThread";
 import { api, type ArtworkDetailResponse } from "../lib/api";
@@ -11,6 +12,7 @@ export default function QuestionsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
+  const [prefs, setPrefs] = useState<ComposeRequest>({});
 
   const detail = useQuery({ queryKey: ["artwork", id], queryFn: () => api.getArtwork(id) });
 
@@ -25,7 +27,7 @@ export default function QuestionsPage() {
   });
 
   const compose = useMutation({
-    mutationFn: () => api.compose(id),
+    mutationFn: () => api.compose(id, prefs),
     onSuccess: (record) => {
       qc.setQueryData<ArtworkDetailResponse>(["artwork", id], (old) =>
         old ? { ...old, analyses: [record, ...old.analyses] } : old,
@@ -94,13 +96,16 @@ export default function QuestionsPage() {
         <ErrorNote error={ask.error} />
         <ErrorNote error={compose.error} />
 
-        <div className="flex items-center justify-between gap-4 border-t pt-5" style={{ borderColor: "var(--line)" }}>
-          <p className="muted text-sm">
-            {asked === 0 ? "You can compose right away, but questions give the song more to work with." : atCap ? "All five asked. Ready to compose." : "Compose whenever you're ready."}
-          </p>
-          <button className="btn btn-primary" onClick={() => compose.mutate()} disabled={busy}>
-            {compose.isPending ? "Composing… (20–60 s)" : "Analyze & compose"}
-          </button>
+        <div className="space-y-4 border-t pt-5" style={{ borderColor: "var(--line)" }}>
+          <GenrePicker value={prefs} onChange={setPrefs} disabled={busy} />
+          <div className="flex items-center justify-between gap-4">
+            <p className="muted text-sm">
+              {asked === 0 ? "You can compose right away, but questions give the song more to work with." : atCap ? "All five asked. Ready to compose." : "Compose whenever you're ready."}
+            </p>
+            <button className="btn btn-primary" onClick={() => compose.mutate()} disabled={busy}>
+              {compose.isPending ? "Composing… (20–60 s)" : "Analyze & compose"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

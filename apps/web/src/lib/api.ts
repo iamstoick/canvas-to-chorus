@@ -1,4 +1,4 @@
-import type { AnalysisRecord, ArtworkDetail, ArtworkListItem, ArtworkSummary, CreateSongRequest, ProviderSettings, ProviderSettingsUpdate, ProviderTestResult, QuestionAnswer, SessionSummary, SongRecord } from "@artlyrics/shared";
+import type { AnalysisRecord, ArtworkDetail, ArtworkListItem, ArtworkSummary, ComposeRequest, CreateSongRequest, ProviderSettings, ProviderSettingsUpdate, ProviderTestResult, QuestionAnswer, SessionSummary, SongRecord } from "@artlyrics/shared";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -63,8 +63,13 @@ export const api = {
       body: JSON.stringify({ question }),
     }).then((r) => handle<AskResponse>(r)),
 
-  compose: (id: string) =>
-    fetch(`${BASE}/artworks/${id}/compose`, { method: "POST", credentials: "include" }).then((r) => handle<AnalysisRecord>(r)),
+  compose: (id: string, prefs: ComposeRequest = {}) =>
+    fetch(`${BASE}/artworks/${id}/compose`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(prefs),
+    }).then((r) => handle<AnalysisRecord>(r)),
 
   getSettings: () => fetch(`${BASE}/settings`, { credentials: "include" }).then((r) => handle<ProviderSettings>(r)),
 

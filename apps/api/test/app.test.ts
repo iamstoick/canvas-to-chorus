@@ -130,3 +130,13 @@ describe("admin", () => {
     expect(res.body.error.code).toBe("admin_not_configured");
   });
 });
+
+describe("compose validation", () => {
+  it("rejects an over-long genre before touching the model", async () => {
+    const res = await request(app)
+      .post("/api/artworks/123e4567-e89b-12d3-a456-426614174000/compose")
+      .send({ genre: "x".repeat(61) });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("validation_error");
+  });
+});

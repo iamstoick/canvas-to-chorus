@@ -28,4 +28,6 @@ export const toAnalysisRecord = (r: AnalysisRow, songs: SongRecord[] = []): Anal
   outputTokens: r.outputTokens,
   createdAt: r.createdAt.toISOString(),
   songs,
+  genrePreference: r.genrePreference ?? null,
+  styleNotes: r.styleNotes ?? null,
 });

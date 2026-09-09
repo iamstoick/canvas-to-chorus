@@ -7,11 +7,11 @@ const composition = {
   lyrics: {
     title: "Still Center",
     sections: [
-      { type: "verse" as const, lines: ["Rust ground holds me close", "One glow, pale and true"] },
-      { type: "chorus" as const, lines: ["Hold the horizon", "Hold it for me"] },
-      { type: "outro" as const, lines: ["Fade", "Away"] },
+      { type: "verse" as const, lines: ["Rust ground holds me close", "One glow, pale and true"], delivery: "soft" },
+      { type: "chorus" as const, lines: ["Hold the horizon", "Hold it for me"], delivery: "soft" },
+      { type: "outro" as const, lines: ["Fade", "Away"], delivery: "soft" },
     ],
-    rationale: "r",
+    rationale: "r", emotional_core: "Wanting to be seen.", point_of_view: "One person to another", performance_notes: "Small, then open.",
   },
   style: {
     primary_genre: "Indie Folk",
@@ -28,10 +28,11 @@ const composition = {
 describe("buildSunoRequest", () => {
   it("maps lyrics, style and title; excludes artists; tags sections", () => {
     const r = buildSunoRequest(composition, "V4_5", false, "https://x/cb");
-    expect(r.prompt.startsWith("[Verse 1]\nRust ground")).toBe(true);
-    expect(r.prompt).toContain("[Chorus]");
+    expect(r.prompt.startsWith("[Verse 1 – soft]\nRust ground")).toBe(true);
+    expect(r.prompt).toContain("[Chorus – soft]");
     expect(r.prompt).not.toContain("Still Center");
-    expect(r.style).toBe("Indie Folk, chamber folk, 65-85 BPM, D minor, acoustic guitar, cello, hushed, intimate vocals");
+    expect(r.style.startsWith("Indie Folk, emotive, expressive, dynamic human vocal performance, chamber folk, 65-85 BPM, D minor, acoustic guitar, cello, hushed, intimate vocals")).toBe(true);
+    expect(r.style).toContain("Small, then open.");
     expect(r.style).not.toContain("Bon Iver");
     expect(r.title).toBe("Still Center");
     expect(r.callBackUrl).toBe("https://x/cb");
@@ -128,5 +129,19 @@ describe("sunoClient", () => {
     await expect(c({ code: 401, msg: "unauthorized" }, 401)).rejects.toMatchObject({ code: "suno_auth" });
     await expect(c({ code: 455, msg: "maintenance" })).rejects.toMatchObject({ code: "suno_maintenance" });
     await expect(c({ code: 500, msg: "boom" })).rejects.toMatchObject({ code: "suno_error", message: expect.stringContaining("boom") });
+  });
+});
+
+describe("emotional delivery in the Suno request", () => {
+  it("puts delivery cues in section tags and performance notes in the style", () => {
+    const withCues = {
+      ...composition,
+      lyrics: { ...composition.lyrics, sections: composition.lyrics.sections.map((s, i) => ({ ...s, delivery: i === 1 ? "full voice, let it break" : "whispered" })), performance_notes: "Stay small until the chorus." },
+    };
+    const r = buildSunoRequest(withCues, "V4_5", false, "https://x/cb");
+    expect(r.prompt).toContain("[Chorus – full voice, let it break]");
+    expect(r.prompt).toContain("[Verse 1 – whispered]");
+    expect(r.style).toContain("emotive, expressive, dynamic human vocal performance");
+    expect(r.style).toContain("Stay small until the chorus.");
   });
 });

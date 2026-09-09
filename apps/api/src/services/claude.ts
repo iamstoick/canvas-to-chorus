@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { Composition, type ProviderSettings } from "@artlyrics/shared";
+import { Composition, type ComposeRequest, type ProviderSettings } from "@artlyrics/shared";
 import { config } from "../config.js";
 import { unprocessable, upstream } from "../lib/errors.js";
 import { ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
@@ -113,7 +113,7 @@ export function anthropicProvider(settings: Pick<ProviderSettings, "model" | "ba
     return { answer, model: msg.model, usage: usageOf(msg) };
   },
 
-  async compose(image: ModelImage, qa: QA[]): Promise<ComposeResult> {
+  async compose(image: ModelImage, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
     const request: Anthropic.Beta.MessageCreateParamsNonStreaming = {
       model,
       max_tokens: 16000,
@@ -122,7 +122,7 @@ export function anthropicProvider(settings: Pick<ProviderSettings, "model" | "ba
       messages: [
         {
           role: "user",
-          content: [imageBlock(image), { type: "text", text: buildComposePrompt(qa) }],
+          content: [imageBlock(image), { type: "text", text: buildComposePrompt(qa, prefs) }],
         },
       ],
       output_config: { format: betaZodOutputFormat(Composition) },

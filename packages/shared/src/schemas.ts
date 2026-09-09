@@ -20,12 +20,20 @@ export type LyricSectionType = z.infer<typeof LyricSectionType>;
 export const LyricSection = z.object({
   type: LyricSectionType,
   lines: z.array(z.string()).min(2).max(8),
+  /** How this section should be sung: dynamics, texture, intent. e.g. "barely above a whisper, close to the mic" */
+  delivery: z.string().describe("Performance cue for the singer: dynamics, texture, emotional intent, in a few words"),
 });
 export type LyricSection = z.infer<typeof LyricSection>;
 
 export const Lyrics = z.object({
   title: z.string(),
+  /** The single feeling the song is really about, named plainly. */
+  emotional_core: z.string().describe("The one true feeling underneath the song, in one sentence, plainly stated"),
+  /** Who is singing, to whom, and what they want or cannot say. */
+  point_of_view: z.string().describe("Who sings, to whom, and what they want or cannot bring themselves to say"),
   sections: z.array(LyricSection).min(3),
+  /** Overall vocal direction: arc of intensity, where to break, breathe, hold back, let go. */
+  performance_notes: z.string().describe("Vocal direction across the song: where it stays small, where it opens up, where the voice should crack or breathe"),
   rationale: z.string().describe("How the artwork and the user's questions shaped the lyrics"),
 });
 export type Lyrics = z.infer<typeof Lyrics>;
@@ -91,6 +99,9 @@ export const AnalysisRecord = z.object({
   createdAt: z.string(),
   /** Songs generated from this analysis, newest first. */
   songs: z.array(z.lazy(() => SongRecord)).default([]),
+  /** Genre the user asked for, or null when the artwork decided. */
+  genrePreference: z.string().nullable().default(null),
+  styleNotes: z.string().nullable().default(null),
 });
 export type AnalysisRecord = z.infer<typeof AnalysisRecord>;
 
@@ -223,3 +234,44 @@ export const SessionSummary = z.object({
   current: z.boolean(),
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
+
+// ---------- Compose preferences ----------
+
+export const GENRES = [
+  "Pop",
+  "Indie Pop",
+  "Rock",
+  "Alternative Rock",
+  "Indie Folk",
+  "Folk",
+  "Country",
+  "Blues",
+  "Jazz",
+  "Soul",
+  "R&B",
+  "Hip-Hop",
+  "Trap",
+  "Electronic",
+  "Synthwave",
+  "House",
+  "Lo-fi",
+  "Ambient",
+  "Classical / Orchestral",
+  "Cinematic",
+  "Latin",
+  "Reggae",
+  "K-Pop",
+  "OPM",
+  "Gospel",
+  "Metal",
+  "Punk",
+  "Bossa Nova",
+] as const;
+
+export const ComposeRequest = z.object({
+  /** Genre the user wants. Empty/undefined = let the artwork decide. */
+  genre: z.string().trim().max(60).optional(),
+  /** Free-text direction, e.g. "female vocals, 80s synths, upbeat". */
+  styleNotes: z.string().trim().max(240).optional(),
+});
+export type ComposeRequest = z.infer<typeof ComposeRequest>;

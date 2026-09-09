@@ -137,13 +137,13 @@ All routes are under `/api` and scoped to an anonymous `httpOnly` session cookie
 
 | Method | Path | Notes |
 |---|---|---|
-| `POST` | `/artworks` | multipart `file`; JPEG/PNG/WebP/GIF, 10 MB cap, magic-byte check, EXIF stripped |
+| `POST` | `/artworks` | multipart `file`; JPEG/PNG/WebP/GIF, 10 MB cap, magic-byte check, EXIF stripped. The browser first downscales anything over 3.5 MB or 2560 px to JPEG, so phone photos upload fine and stay under Vercel's 4.5 MB body limit |
 | `GET` | `/artworks` | all artworks in the caller's session with question/composition/song counts |
 | `GET` | `/artworks/:id` | artwork + questions + analyses (newest first) + suggested questions |
 | `GET` | `/artworks/:id/image` | serves the stored image |
 | `DELETE` | `/artworks/:id` | removes the artwork, its rows, and its file |
 | `POST` | `/artworks/:id/questions` | `{ question }`; vision Q&A; `409 question_limit` after five |
-| `POST` | `/artworks/:id/compose` | analysis + lyrics + style as one structured-output call; each call adds a version |
+| `POST` | `/artworks/:id/compose` | `{ genre?, styleNotes? }`; analysis + lyrics + style as one structured-output call; each call adds a version. Empty genre = the artwork decides |
 | `POST` | `/analyses/:id/songs` | `{ model?, instrumental? }`; starts a Suno generation from that analysis's lyrics + style |
 | `GET` | `/songs/:id` | song status + tracks; refreshes from Suno while running, then copies MP3s into storage |
 | `GET` | `/songs/:id/tracks/:n/audio` | our stored copy of a take (`audio/mpeg`, supports `Range`) |
@@ -196,6 +196,25 @@ Errors use one envelope: `{ "error": { "code", "message" } }`.
   *Preview* shows a session's artworks; *Open* switches this browser's session cookie to it so you can browse and
   play its results. Requires `ADMIN_TOKEN`; the page asks for it once and keeps it in localStorage.
 - `/settings` model provider.
+
+## Writing for feeling
+
+The songwriting prompt is built around emotional craft rather than description: one plainly named
+`emotional_core`, a `point_of_view` (who sings, to whom, what they cannot say), concrete physical detail instead
+of abstractions, an arc where the chorus says the hard thing simply and the bridge turns, lines shaped for a
+voice. Every section carries a `delivery` cue ("barely above a whisper", "full voice, letting it break") and the
+song has `performance_notes` for the whole vocal arc. These show on the lyrics card, go into Suno's section
+tags (`[Chorus – full voice, letting it break]`) and its style string, so the generated performance follows the
+emotion instead of a flat read. For the most human results use `sonnet` or `opus` rather than `haiku` in Model
+settings.
+
+## Choosing the genre
+
+Before composing (and on **Regenerate**) you can pick a genre from a list or type your own, and add style
+notes such as "female vocals, 80s synths". The prompt then asks for lyrics in that genre's idiom and a style
+recommendation whose primary genre matches, while keeping every image grounded in the artwork. Leave it on
+"Let the artwork decide" for the original behavior. The choice is stored with the composition and shown on the
+result page, and Suno inherits it through the style card.
 
 ## Song generation (Suno)
 

@@ -7,7 +7,7 @@ import { claudeCliProvider, type ClaudeCliRunner } from "../src/services/claudeC
 const image = { data: Buffer.from("fakejpeg").toString("base64"), mediaType: "image/jpeg" as const };
 const composition = {
   analysis: { subject: "s", medium: "m", dominant_colors: ["red"], mood: ["calm"], composition: "c", era_or_movement: "e", symbols_and_themes: [], narrative: "n" },
-  lyrics: { title: "T", sections: [{ type: "verse", lines: ["a", "b"] }, { type: "chorus", lines: ["c", "d"] }, { type: "outro", lines: ["e", "f"] }], rationale: "r" },
+  lyrics: { title: "T", sections: [{ type: "verse", lines: ["a", "b"], delivery: "soft" }, { type: "chorus", lines: ["c", "d"], delivery: "soft" }, { type: "outro", lines: ["e", "f"], delivery: "soft" }], rationale: "r", emotional_core: "Wanting to be seen.", point_of_view: "One person to another", performance_notes: "Small, then open." },
   style: { primary_genre: "g", sub_genres: [], tempo_bpm: { min: 80, max: 90 }, key_suggestion: "C", instrumentation: ["piano"], vocal_style: "v", reference_artists: [], why: "w" },
 };
 const resolveOk = () => "/fake/bin/claude";

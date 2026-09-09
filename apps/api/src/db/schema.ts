@@ -61,6 +61,8 @@ export const analyses = pgTable(
     model: text("model").notNull(),
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
+    genrePreference: text("genre_preference"),
+    styleNotes: text("style_notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("analyses_artwork_idx").on(t.artworkId, t.createdAt)],

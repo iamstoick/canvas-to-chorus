@@ -33,17 +33,20 @@ export function buildSunoRequest(
   const { lyrics, style } = composition;
   const lim = LIMITS[model];
   // "instrumental" goes first so it survives clipping on models with a 200-char style limit.
+  // Emotional delivery follows the genre so it also survives on V4's short limit.
   const styleParts = [
     ...(instrumental ? ["instrumental"] : []),
     style.primary_genre,
+    ...(instrumental ? [] : ["emotive, expressive, dynamic human vocal performance"]),
     ...style.sub_genres,
     `${style.tempo_bpm.min}-${style.tempo_bpm.max} BPM`,
     style.key_suggestion,
     ...style.instrumentation,
-    ...(instrumental ? [] : [`${style.vocal_style} vocals`]),
+    ...(instrumental ? [] : [`${style.vocal_style} vocals`, ...(lyrics.performance_notes ? [lyrics.performance_notes] : [])]),
   ].filter(Boolean);
   return {
-    prompt: instrumental ? "" : clip(lyricsToText(lyrics, { includeTitle: false }), lim.prompt),
+    // Section tags carry the delivery cue, e.g. "[Chorus – full voice, letting it break]". Suno reads these.
+    prompt: instrumental ? "" : clip(lyricsToText(lyrics, { includeTitle: false, includeDelivery: true }), lim.prompt),
     style: clip(styleParts.join(", "), lim.style),
     title: clip(lyrics.title, lim.title),
     model,

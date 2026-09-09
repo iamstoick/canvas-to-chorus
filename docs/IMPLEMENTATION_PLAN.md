@@ -456,3 +456,28 @@ The UI keeps polling until `persisted` is true and labels the link "Download MP3
   session list with counts and provider, per-session artworks, and a "switch" that rewrites the
   `al_session` cookie so the admin can browse another session's artworks in the normal UI.
 - `/sessions` page: token prompt (stored in localStorage), table, Preview and Open actions.
+
+## 23. Client-side image shrinking (added 2026-09-08)
+
+Uploads over 10 MB were rejected by the dropzone ("File is larger than 10485760 bytes"). Phone photos
+routinely exceed that, and Vercel caps bodies at 4.5 MB anyway. `apps/web/src/lib/image.ts` now decodes the
+file in the browser, downscales to 2560 px on the longest edge, and re-encodes as JPEG stepping quality down
+until under 3.5 MB. GIFs and small files pass through. The dropzone accepts up to 80 MB input; the server
+keeps its 10 MB cap as a backstop with a clearer message.
+
+## 24. Genre choice (added 2026-09-08)
+
+`ComposeRequest { genre?, styleNotes? }` flows from the UI (`GenrePicker` on the questions page and in the
+result page's Regenerate panel) through `POST /compose` into `buildComposePrompt`, which appends an
+instruction to write in that genre and make `primary_genre` match while staying grounded in the artwork.
+Stored on `analyses` (`genre_preference`, `style_notes`, migration `0004`) and surfaced as chips.
+
+## 25. Emotional depth (added 2026-09-09)
+
+User feedback: generated songs felt soulless. Changes: `COMPOSER_SYSTEM_PROMPT` rewritten around emotional
+craft (one true feeling, embodied point of view, concrete sensory detail, no abstract nouns or slogans, arc
+with a turning bridge, lines written for a voice, human imperfection). `Lyrics` gained `emotional_core`,
+`point_of_view`, `performance_notes`; each section gained `delivery`. `lyricsToText` can embed delivery cues
+in section tags; the Suno request does so and adds "emotive, expressive, dynamic human vocal performance" plus
+the performance notes to the style string. UI shows core, POV, cues, and "How to sing it". Older compositions
+lack the new fields and render without them.

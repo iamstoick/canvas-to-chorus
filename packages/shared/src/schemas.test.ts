@@ -15,11 +15,11 @@ const validComposition = {
   lyrics: {
     title: "Edge of the Known",
     sections: [
-      { type: "verse", lines: ["Line one", "Line two"] },
-      { type: "chorus", lines: ["Chorus one", "Chorus two"] },
-      { type: "outro", lines: ["Out one", "Out two"] },
+      { type: "verse", lines: ["Line one", "Line two"], delivery: "soft" },
+      { type: "chorus", lines: ["Chorus one", "Chorus two"], delivery: "soft" },
+      { type: "outro", lines: ["Out one", "Out two"], delivery: "soft" },
     ],
-    rationale: "Mirrors the solitude in the image.",
+    rationale: "Mirrors the solitude in the image.", emotional_core: "Wanting to be seen.", point_of_view: "One person to another", performance_notes: "Small, then open.",
   },
   style: {
     primary_genre: "Indie folk",
@@ -44,7 +44,7 @@ describe("Composition schema", () => {
   });
 
   it("rejects unknown section types", () => {
-    const bad = { ...validComposition, lyrics: { ...validComposition.lyrics, sections: [...validComposition.lyrics.sections, { type: "rap", lines: ["a", "b"] }] } };
+    const bad = { ...validComposition, lyrics: { ...validComposition.lyrics, sections: [...validComposition.lyrics.sections, { type: "rap", lines: ["a", "b"], delivery: "soft" }] } };
     expect(Composition.safeParse(bad).success).toBe(false);
   });
 });
@@ -60,5 +60,15 @@ describe("AskQuestionRequest", () => {
   it("trims and enforces minimum length", () => {
     expect(AskQuestionRequest.safeParse({ question: "  hi  " }).success).toBe(false);
     expect(AskQuestionRequest.parse({ question: "  What mood is this?  " }).question).toBe("What mood is this?");
+  });
+});
+
+describe("lyricsToText delivery cues", () => {
+  it("includes cues only when asked", async () => {
+    const { lyricsToText } = await import("./format.js");
+    const l = { ...validComposition.lyrics, sections: [{ type: "chorus" as const, lines: ["a", "b"], delivery: "soaring" }, { type: "verse" as const, lines: ["c", "d"], delivery: "hushed" }, { type: "outro" as const, lines: ["e", "f"], delivery: "fading" }] };
+    expect(lyricsToText(l, { includeTitle: false })).toContain("[Chorus]\na");
+    expect(lyricsToText(l, { includeTitle: false, includeDelivery: true })).toContain("[Chorus – soaring]\na");
+    expect(lyricsToText(l, { includeTitle: false, includeDelivery: true })).toContain("[Verse 1 – hushed]");
   });
 });

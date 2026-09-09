@@ -29,6 +29,13 @@
       "when": 1788751055299,
       "tag": "0003_songs",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788936662018,
+      "tag": "0004_genre_preference",
+      "breakpoints": true
     }
   ]
 }

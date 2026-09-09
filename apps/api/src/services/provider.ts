@@ -1,4 +1,4 @@
-import type { Composition, ProviderName, ProviderSettings, QuestionAnswer } from "@artlyrics/shared";
+import type { ComposeRequest, Composition, ProviderName, ProviderSettings, QuestionAnswer } from "@artlyrics/shared";
 
 export interface ModelImage {
   data: string; // base64
@@ -29,7 +29,7 @@ export type QA = Pick<QuestionAnswer, "question" | "answer">;
 export interface AnalysisProvider {
   readonly name: ProviderName;
   answerQuestion(image: ModelImage, prior: QA[], question: string): Promise<AnswerResult>;
-  compose(image: ModelImage, qa: QA[]): Promise<ComposeResult>;
+  compose(image: ModelImage, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult>;
   /** Connectivity + model check used by the settings screen. */
   test(): Promise<{ ok: boolean; message: string; vision: boolean | null; availableModels?: string[] }>;
 }

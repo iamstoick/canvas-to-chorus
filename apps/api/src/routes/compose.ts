@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asc, eq } from "drizzle-orm";
+import { ComposeRequest } from "@artlyrics/shared";
 import type { Db } from "../db/client.js";
 import { analyses, questions } from "../db/schema.js";
 import { modelLimiter } from "../middleware/rateLimit.js";
@@ -15,12 +16,13 @@ export function composeRouter(db: Db, storage: Storage, providers: ProviderFacto
 
   r.post("/artworks/:id/compose", modelLimiter, async (req, res, next) => {
     try {
+      const prefs = ComposeRequest.parse(req.body ?? {});
       const art = await loadOwnedArtwork(db, req.params.id, req.sessionId);
       const qa = await db.select().from(questions).where(eq(questions.artworkId, art.id)).orderBy(asc(questions.position));
       const image = await toModelImage(await storage.read(art.storagePath));
 
       const provider = providers(await getSettings(db, req.sessionId));
-      const result = await provider.compose(image, qa);
+      const result = await provider.compose(image, qa, prefs);
 
       const [row] = await db
         .insert(analyses)
@@ -32,6 +34,8 @@ export function composeRouter(db: Db, storage: Storage, providers: ProviderFacto
           model: result.model,
           inputTokens: result.usage.inputTokens,
           outputTokens: result.usage.outputTokens,
+          genrePreference: prefs.genre || null,
+          styleNotes: prefs.styleNotes || null,
         })
         .returning();
       res.status(201).json(toAnalysisRecord(row));

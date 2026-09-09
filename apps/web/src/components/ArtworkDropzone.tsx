@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
-import { ALLOWED_IMAGE_MIME, MAX_UPLOAD_BYTES } from "@artlyrics/shared";
+import { ALLOWED_IMAGE_MIME } from "@artlyrics/shared";
+import { CLIENT_MAX_INPUT_BYTES, formatBytes } from "../lib/image";
 
 interface Props {
   onSelect: (file: File) => void;
@@ -14,7 +15,14 @@ export default function ArtworkDropzone({ onSelect, disabled }: Props) {
     (accepted: File[], rejected: FileRejection[]) => {
       setLocalError(null);
       if (rejected.length) {
-        setLocalError(rejected[0].errors[0]?.message ?? "That file can't be used.");
+        const err = rejected[0].errors[0];
+        const msg =
+          err?.code === "file-too-large"
+            ? `That file is ${formatBytes(rejected[0].file.size)}. The limit is ${formatBytes(CLIENT_MAX_INPUT_BYTES)}.`
+            : err?.code === "file-invalid-type"
+              ? "Only JPEG, PNG, WebP or GIF images are accepted."
+              : err?.message ?? "That file can't be used.";
+        setLocalError(msg);
         return;
       }
       if (accepted[0]) onSelect(accepted[0]);
@@ -26,7 +34,7 @@ export default function ArtworkDropzone({ onSelect, disabled }: Props) {
     onDrop,
     multiple: false,
     disabled,
-    maxSize: MAX_UPLOAD_BYTES,
+    maxSize: CLIENT_MAX_INPUT_BYTES,
     accept: Object.fromEntries(ALLOWED_IMAGE_MIME.map((m) => [m, []])),
   });
 
@@ -40,7 +48,7 @@ export default function ArtworkDropzone({ onSelect, disabled }: Props) {
       >
         <input {...getInputProps()} />
         <div className="font-display text-3xl mb-2">Drop an artwork here</div>
-        <p className="muted text-sm">or click to choose a file · JPEG, PNG, WebP or GIF · up to 10 MB</p>
+        <p className="muted text-sm">or click to choose a file · JPEG, PNG, WebP or GIF · large photos are shrunk in your browser before upload</p>
       </div>
       {localError && <p role="alert" className="mt-3 text-sm" style={{ color: "var(--color-accent)" }}>{localError}</p>}
     </div>

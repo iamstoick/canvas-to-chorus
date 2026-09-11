@@ -137,7 +137,8 @@ All routes are under `/api` and scoped to an anonymous `httpOnly` session cookie
 
 | Method | Path | Notes |
 |---|---|---|
-| `POST` | `/artworks` | multipart `file`; JPEG/PNG/WebP/GIF, 10 MB cap, magic-byte check, EXIF stripped. The browser first downscales anything over 3.5 MB or 2560 px to JPEG, so phone photos upload fine and stay under Vercel's 4.5 MB body limit |
+| `POST` | `/artworks` | multipart `file` (image) **or** `frames[]` + `poster` + `originalName`/`mimeType`/`durationSeconds` (video). JPEG/PNG/WebP/GIF, 10 MB per file, magic-byte check, EXIF stripped. The browser downscales images and samples videos into frames first, so nothing heavy is uploaded |
+| `GET` | `/artworks/:id/frames/:n` | one sampled video frame |
 | `GET` | `/artworks` | all artworks in the caller's session with question/composition/song counts |
 | `GET` | `/artworks/:id` | artwork + questions + analyses (newest first) + suggested questions |
 | `GET` | `/artworks/:id/image` | serves the stored image |
@@ -196,6 +197,15 @@ Errors use one envelope: `{ "error": { "code", "message" } }`.
   *Preview* shows a session's artworks; *Open* switches this browser's session cookie to it so you can browse and
   play its results. Requires `ADMIN_TOKEN`; the page asks for it once and keeps it in localStorage.
 - `/settings` model provider.
+
+## Video
+
+Drop an MP4, WebM or MOV and the browser samples 8 to 12 evenly spaced frames (more for longer clips) with a
+hidden `<video>` and a canvas, then uploads only those JPEGs plus a poster. The video file itself never leaves the
+device, so there is no ffmpeg on the server and no large upload. Every provider receives the frames in order with
+an intro such as "8 frames sampled in order from a 42-second video" and is asked to read them as one work: what
+moves, what changes, where the turn is. The song's arc follows the clip's arc. Sound is ignored; the model does
+not hear audio. Codecs the browser cannot decode (some MOV/HEVC) get a clear error suggesting an H.264 export.
 
 ## Writing for feeling
 

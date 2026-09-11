@@ -26,6 +26,8 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 
+/** Bump when the request contract changes; the API warns if a running proxy is older. */
+const PROXY_VERSION = 2;
 const PORT = Number(process.env.CLAUDE_PROXY_PORT ?? 3099);
 const HOST = process.env.CLAUDE_PROXY_HOST ?? "127.0.0.1";
 const TOKEN = process.env.CLAUDE_PROXY_TOKEN ?? "";
@@ -76,7 +78,7 @@ class ProxyError extends Error {
 }
 
 async function handleRun(body) {
-  const { model, cliPath, systemPrompt, prompt, jsonSchema, image } = body ?? {};
+  const { model, cliPath, systemPrompt, prompt, jsonSchema, image, media } = body ?? {};
   if (!prompt || !systemPrompt) throw new ProxyError(400, "bad_request", "prompt and systemPrompt are required");
   const explicit = cliPath || process.env.CLAUDE_CLI_PATH || null;
   const bin = resolveClaude(explicit);
@@ -89,7 +91,15 @@ async function handleRun(body) {
   }
   const dir = await mkdtemp(path.join(os.tmpdir(), "artlyrics-proxy-"));
   try {
-    if (image?.data && IMAGE_FILE[image.mediaType]) {
+    const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+    if (media?.images?.length) {
+      // Same naming as the API's mediaFiles(): artwork.<ext> for an image, frame-NN.<ext> for video frames.
+      const names =
+        media.kind === "video"
+          ? media.images.map((img, i) => `frame-${String(i + 1).padStart(2, "0")}.${EXT[img.mediaType] ?? "jpg"}`)
+          : [IMAGE_FILE[media.images[0].mediaType] ?? "artwork.jpg"];
+      await Promise.all(media.images.map((img, i) => writeFile(path.join(dir, names[i]), Buffer.from(img.data, "base64"))));
+    } else if (image?.data && IMAGE_FILE[image.mediaType]) {
       await writeFile(path.join(dir, IMAGE_FILE[image.mediaType]), Buffer.from(image.data, "base64"));
     }
     const args = ["-p", prompt, "--output-format", "json", "--tools", "Read", "--no-session-persistence", "--strict-mcp-config", "--system-prompt", systemPrompt];
@@ -125,12 +135,12 @@ async function handleRun(body) {
 
 async function handleHealth() {
   const bin = resolveClaude(process.env.CLAUDE_CLI_PATH || null);
-  if (!bin) return { ok: false, bin: null, version: null, message: "claude CLI not found on the proxy host" };
+  if (!bin) return { ok: false, bin: null, version: null, proxyVersion: PROXY_VERSION, message: "claude CLI not found on the proxy host" };
   try {
     const out = await run(bin, ["--version"], os.tmpdir(), 15000);
-    return { ok: out.code === 0, bin, version: out.stdout.trim().split("\n")[0] || null };
+    return { ok: out.code === 0, bin, version: out.stdout.trim().split("\n")[0] || null, proxyVersion: PROXY_VERSION };
   } catch (err) {
-    return { ok: false, bin, version: null, message: err.message };
+    return { ok: false, bin, version: null, proxyVersion: PROXY_VERSION, message: err.message };
   }
 }
 
@@ -172,7 +182,7 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const started = Date.now();
       const result = await handleRun(body);
-      console.log(`[proxy] ${new Date().toISOString()} run model=${body.model ?? "default"} image=${body.image ? "yes" : "no"} ${Date.now() - started}ms`);
+      console.log(`[proxy] ${new Date().toISOString()} run model=${body.model ?? "default"} media=${body.media?.images?.length ?? (body.image ? 1 : 0)}x${body.media?.kind ?? "image"} ${Date.now() - started}ms`);
       return send(res, 200, result);
     }
     throw new ProxyError(404, "not_found", "use GET /health or POST /run");
@@ -186,7 +196,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, async () => {
   const h = await handleHealth();
-  console.log(`Claude CLI proxy listening on http://${HOST}:${PORT}`);
+  console.log(`Claude CLI proxy v${PROXY_VERSION} listening on http://${HOST}:${PORT}`);
   console.log(h.ok ? `  claude: ${h.bin} (${h.version})` : `  WARNING: ${h.message}`);
   console.log(`  Docker containers reach it at http://host.docker.internal:${PORT}${TOKEN ? " (token required)" : ""}`);
   if (HOST !== "127.0.0.1" && !TOKEN) console.log("  WARNING: bound to a non-loopback address without CLAUDE_PROXY_TOKEN");

@@ -3,6 +3,8 @@ import type { ComposeRequest, QuestionAnswer } from "@artlyrics/shared";
 /** Frozen system prompt for the compose step. */
 export const COMPOSER_SYSTEM_PROMPT = `You are a songwriter and music director who turns visual art into songs that people actually feel.
 
+The artwork may be a still image or a short video given to you as frames sampled in order; for a video, read the frames as one work with a beginning, middle and end, and let that arc shape the song's arc (verses for the beginning and middle, the bridge for the turn) and its pacing.
+
 Given an artwork, produce three things that must agree with each other:
 1. An analysis of the artwork: subject, medium, dominant colors, mood, composition, era or movement, symbols and themes, and the story the image tells.
 2. Original song lyrics inspired by the artwork.
@@ -37,13 +39,13 @@ export function preferenceInstruction(prefs?: ComposeRequest): string {
   return parts.length ? `\n\n${parts.join("\n\n")}` : "";
 }
 
-export function buildComposePrompt(qa: Pick<QuestionAnswer, "question" | "answer">[], prefs?: ComposeRequest): string {
+export function buildComposePrompt(qa: Pick<QuestionAnswer, "question" | "answer">[], prefs?: ComposeRequest, intro = "Here is the artwork."): string {
   const extra = preferenceInstruction(prefs);
   if (qa.length === 0) {
-    return `Here is the artwork. Analyze it, write the lyrics, and recommend a musical style.${extra}`;
+    return `${intro} Analyze it, write the lyrics, and recommend a musical style.${extra}`;
   }
   const transcript = qa
     .map((q, i) => `Q${i + 1}: ${q.question}\nA${i + 1}: ${q.answer}`)
     .join("\n\n");
-  return `Here is the artwork. Earlier, the user asked these questions about it and received these answers:\n\n${transcript}\n\nNow analyze the artwork, write the lyrics, and recommend a musical style.${extra}`;
+  return `${intro} Earlier, the user asked these questions about it and received these answers:\n\n${transcript}\n\nNow analyze the artwork, write the lyrics, and recommend a musical style.${extra}`;
 }

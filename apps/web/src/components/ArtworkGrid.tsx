@@ -8,7 +8,10 @@ export default function ArtworkGrid({ items, emptyText }: { items: ArtworkListIt
       {items.map((a) => (
         <li key={a.id} className="card overflow-hidden flex flex-col">
           <Link to={a.analysisCount > 0 ? `/a/${a.id}/result` : `/a/${a.id}/questions`} className="block">
-            <img src={a.imageUrl} alt={a.originalName} className="w-full h-44 object-cover" loading="lazy" />
+            <div className="relative">
+              <img src={a.imageUrl} alt={a.originalName} className="w-full h-44 object-cover" loading="lazy" />
+              {a.kind === "video" && <span className="chip absolute top-2 left-2">video · {a.frameUrls.length} frames</span>}
+            </div>
           </Link>
           <div className="p-4 space-y-2 flex-1 flex flex-col">
             <div>

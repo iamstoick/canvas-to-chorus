@@ -2,9 +2,9 @@ import { z } from "zod/v4";
 import { Composition, type ComposeRequest, type ProviderSettings } from "@artlyrics/shared";
 import { config } from "../config.js";
 import { unprocessable, upstream } from "../lib/errors.js";
-import { ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
+import { ANALYST_SYSTEM_PROMPT, mediaIntro } from "../prompts/analyze.js";
 import { COMPOSER_SYSTEM_PROMPT, buildComposePrompt } from "../prompts/lyrics.js";
-import type { AnalysisProvider, AnswerResult, ComposeResult, ModelImage, QA, Usage } from "./provider.js";
+import type { AnalysisProvider, AnswerResult, ComposeResult, ModelMedia, QA, Usage } from "./provider.js";
 
 interface OllamaMessage {
   role: "system" | "user" | "assistant";
@@ -134,10 +134,10 @@ export function ollamaProvider(settings: Pick<ProviderSettings, "model" | "baseU
       return { ok: true, vision, availableModels, message };
     },
 
-    async answerQuestion(image: ModelImage, prior: QA[], question: string): Promise<AnswerResult> {
+    async answerQuestion(media: ModelMedia, prior: QA[], question: string): Promise<AnswerResult> {
       const messages: OllamaMessage[] = [
         { role: "system", content: ANALYST_SYSTEM_PROMPT },
-        { role: "user", content: "Here is the artwork. I will ask questions about it.", images: [image.data] },
+        { role: "user", content: `${mediaIntro(media)} I will ask questions about it.`, images: media.images.map((i) => i.data) },
         ...prior.flatMap<OllamaMessage>((q) => [
           { role: "user", content: q.question },
           { role: "assistant", content: q.answer },
@@ -150,10 +150,10 @@ export function ollamaProvider(settings: Pick<ProviderSettings, "model" | "baseU
       return { answer, model: `ollama/${r.model ?? model}`, usage: usageOf(r) };
     },
 
-    async compose(image: ModelImage, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
+    async compose(media: ModelMedia, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
       const messages: OllamaMessage[] = [
         { role: "system", content: `${COMPOSER_SYSTEM_PROMPT}\n\nRespond with a single JSON object that matches the provided schema. No prose.` },
-        { role: "user", content: buildComposePrompt(qa, prefs), images: [image.data] },
+        { role: "user", content: buildComposePrompt(qa, prefs, mediaIntro(media)), images: media.images.map((i) => i.data) },
       ];
       for (let attempt = 0; attempt < 2; attempt++) {
         const r = await chat(messages, COMPOSITION_JSON_SCHEMA);

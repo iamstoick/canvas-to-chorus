@@ -53,6 +53,37 @@ export const api = {
     });
   },
 
+  uploadVideoFrames(
+    frames: File[],
+    poster: File,
+    meta: { originalName: string; mimeType: string; durationSeconds: number },
+    onProgress?: (pct: number) => void,
+  ): Promise<ArtworkSummary> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${BASE}/artworks`);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(Math.round((e.loaded / e.total) * 100));
+      xhr.onload = () => {
+        try {
+          const body = JSON.parse(xhr.responseText || "{}");
+          if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+          else reject(new ApiClientError(xhr.status, body?.error?.code ?? "http_error", body?.error?.message ?? xhr.statusText));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      xhr.onerror = () => reject(new ApiClientError(0, "network", "Network error during upload"));
+      const form = new FormData();
+      frames.forEach((f) => form.append("frames", f));
+      form.append("poster", poster);
+      form.append("originalName", meta.originalName);
+      form.append("mimeType", meta.mimeType);
+      form.append("durationSeconds", String(meta.durationSeconds));
+      xhr.send(form);
+    });
+  },
+
   getArtwork: (id: string) => fetch(`${BASE}/artworks/${id}`, { credentials: "include" }).then((r) => handle<ArtworkDetailResponse>(r)),
 
   askQuestion: (id: string, question: string) =>

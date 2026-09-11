@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { claudeCliProvider, type ClaudeCliRunner } from "../src/services/claudeCli.js";
 
 const image = { data: Buffer.from("fakejpeg").toString("base64"), mediaType: "image/jpeg" as const };
+const media = { kind: "image" as const, images: [image] };
 const composition = {
   analysis: { subject: "s", medium: "m", dominant_colors: ["red"], mood: ["calm"], composition: "c", era_or_movement: "e", symbols_and_themes: [], narrative: "n" },
   lyrics: { title: "T", sections: [{ type: "verse", lines: ["a", "b"], delivery: "soft" }, { type: "chorus", lines: ["c", "d"], delivery: "soft" }, { type: "outro", lines: ["e", "f"], delivery: "soft" }], rationale: "r", emotional_core: "Wanting to be seen.", point_of_view: "One person to another", performance_notes: "Small, then open." },
@@ -24,7 +25,7 @@ describe("claudeCliProvider", () => {
       return ok({ result: "Melancholy, mostly." });
     };
     const p = claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk);
-    const r = await p.answerQuestion(image, [{ question: "q1", answer: "a1" }], "What mood?");
+    const r = await p.answerQuestion(media, [{ question: "q1", answer: "a1" }], "What mood?");
     expect(cwdHadImage).toBe(true);
     expect(seenArgs.slice(0, 2)).toEqual(["-p", expect.stringContaining("./artwork.jpg")]);
     expect(seenArgs[1]).toContain("Q1: q1");
@@ -44,30 +45,30 @@ describe("claudeCliProvider", () => {
       expect(schema.$schema).toBeUndefined();
       return ok({ result: "ignored", structured_output: composition });
     };
-    const r = await claudeCliProvider({ model: "sonnet", cliPath: null }, runner, resolveOk).compose(image, []);
+    const r = await claudeCliProvider({ model: "sonnet", cliPath: null }, runner, resolveOk).compose(media, []);
     expect(r.composition.style.primary_genre).toBe("g");
   });
 
   it("cleans up its scratch directory", async () => {
     let dir = "";
     const runner: ClaudeCliRunner = async (_b, _a, cwd) => { dir = cwd; return ok({ result: "x" }); };
-    await claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk).answerQuestion(image, [], "q?");
+    await claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk).answerQuestion(media, [], "q?");
     expect(existsSync(dir)).toBe(false);
   });
 
   it("reports a missing binary as 502 claude_cli_missing", async () => {
     const p = claudeCliProvider({ model: "haiku", cliPath: "/nope/claude" }, vi.fn() as unknown as ClaudeCliRunner, () => null);
-    await expect(p.answerQuestion(image, [], "q?")).rejects.toMatchObject({ status: 502, code: "claude_cli_missing", message: expect.stringContaining("/nope/claude") });
+    await expect(p.answerQuestion(media, [], "q?")).rejects.toMatchObject({ status: 502, code: "claude_cli_missing", message: expect.stringContaining("/nope/claude") });
   });
 
   it("surfaces CLI auth failures distinctly", async () => {
     const runner: ClaudeCliRunner = async () => ({ code: 1, stderr: "", stdout: JSON.stringify({ is_error: true, result: "Not logged in. Please run /login" }) });
-    await expect(claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk).answerQuestion(image, [], "q?")).rejects.toMatchObject({ code: "claude_cli_auth" });
+    await expect(claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk).answerQuestion(media, [], "q?")).rejects.toMatchObject({ code: "claude_cli_auth" });
   });
 
   it("handles non-JSON output", async () => {
     const runner: ClaudeCliRunner = async () => ({ code: 1, stderr: "boom", stdout: "" });
-    await expect(claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk).answerQuestion(image, [], "q?")).rejects.toMatchObject({ code: "claude_cli_error", message: expect.stringContaining("boom") });
+    await expect(claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk).answerQuestion(media, [], "q?")).rejects.toMatchObject({ code: "claude_cli_error", message: expect.stringContaining("boom") });
   });
 
   it("test() reports the resolved binary and version", async () => {
@@ -87,3 +88,19 @@ describe("claudeCliProvider", () => {
 
 // sanity: no leftover scratch dirs from this file
 void readdirSync;
+
+describe("video frames through the CLI", () => {
+  it("writes frame files in order and lists them in the prompt", async () => {
+    const frames = { kind: "video" as const, durationSeconds: 42, images: [image, image, image] };
+    let seen: { args: string[]; files: string[] } | null = null;
+    const runner: ClaudeCliRunner = async (_b, args, cwd) => {
+      seen = { args, files: readdirSync(cwd).sort() };
+      return ok({ result: "Motion builds toward the end." });
+    };
+    const r = await claudeCliProvider({ model: "haiku", cliPath: null }, runner, resolveOk).answerQuestion(frames, [], "What changes?");
+    expect(r.answer).toBe("Motion builds toward the end.");
+    expect(seen!.files).toEqual(["frame-01.jpg", "frame-02.jpg", "frame-03.jpg"]);
+    expect(seen!.args[1]).toContain("3 frames sampled in order from a 42-second video");
+    expect(seen!.args[1]).toContain("./frame-01.jpg, ./frame-02.jpg, ./frame-03.jpg");
+  });
+});

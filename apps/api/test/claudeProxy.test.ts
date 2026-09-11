@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { claudeProxyProvider, proxyExecutor } from "../src/services/claudeCli.js";
 
 const image = { data: Buffer.from("fakejpeg").toString("base64"), mediaType: "image/jpeg" as const };
+const media = { kind: "image" as const, images: [image] };
 const envelope = { type: "result", is_error: false, result: "Warm and calm.", usage: { input_tokens: 3, output_tokens: 4 }, modelUsage: { "claude-haiku-4-5": {} } };
 
 function fakeFetch(handler: (url: string, init?: RequestInit) => { status?: number; json: unknown }) {
@@ -23,10 +24,10 @@ describe("proxyExecutor", () => {
       expect(url).toBe("http://proxy.test:3099/run");
       const body = JSON.parse(String(init?.body));
       expect(body.model).toBe("haiku");
-      expect(body.image.data).toBe(image.data);
+      expect(body.media.images[0].data).toBe(image.data);
       return { json: envelope };
     });
-    const r = await proxyExecutor("http://proxy.test:3099/", fetch)({ model: "haiku", cliPath: null, systemPrompt: "s", prompt: "p", image });
+    const r = await proxyExecutor("http://proxy.test:3099/", fetch)({ model: "haiku", cliPath: null, systemPrompt: "s", prompt: "p", media });
     expect(r.result).toBe("Warm and calm.");
   });
 
@@ -47,16 +48,23 @@ describe("proxyExecutor", () => {
 describe("claudeProxyProvider", () => {
   it("answers via the proxy and labels the model", async () => {
     const fetch = fakeFetch(() => ({ json: envelope }));
-    const r = await claudeProxyProvider({ model: "haiku", cliPath: null, baseUrl: "http://x" }, fetch).answerQuestion(image, [], "mood?");
+    const r = await claudeProxyProvider({ model: "haiku", cliPath: null, baseUrl: "http://x" }, fetch).answerQuestion(media, [], "mood?");
     expect(r.answer).toBe("Warm and calm.");
     expect(r.model).toBe("claude-proxy/claude-haiku-4-5");
   });
 
   it("test() reports proxy health", async () => {
-    const fetch = fakeFetch((url) => { expect(url).toBe("http://x/health"); return { json: { ok: true, bin: "/b/claude", version: "2.1.261" } }; });
+    const fetch = fakeFetch((url) => { expect(url).toBe("http://x/health"); return { json: { ok: true, bin: "/b/claude", version: "2.1.261", proxyVersion: 2 } }; });
     const r = await claudeProxyProvider({ model: "opus", cliPath: null, baseUrl: "http://x" }, fetch).test();
     expect(r.ok).toBe(true);
     expect(r.message).toMatch(/2\.1\.261/);
+  });
+
+  it("test() flags an outdated proxy script and says how to fix it", async () => {
+    const fetch = fakeFetch(() => ({ json: { ok: true, bin: "/b/claude", version: "2.1.261" } }));
+    const r = await claudeProxyProvider({ model: "opus", cliPath: null, baseUrl: "http://x" }, fetch).test();
+    expect(r.ok).toBe(false);
+    expect(r.message).toMatch(/outdated.*npm run claude-proxy/);
   });
 });
 
@@ -113,7 +121,7 @@ echo '${JSON.stringify({ ...envelope, structured_output: { hello: "world" } })}'
     const res = await fetch(`http://127.0.0.1:${port}/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer secret" },
-      body: JSON.stringify({ model: "haiku", systemPrompt: "sys", prompt: "hi", jsonSchema: { type: "object" }, image }),
+      body: JSON.stringify({ model: "haiku", systemPrompt: "sys", prompt: "hi", jsonSchema: { type: "object" }, media }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -129,7 +137,7 @@ echo '${JSON.stringify({ ...envelope, structured_output: { hello: "world" } })}'
     process.env.CLAUDE_PROXY_TOKEN = "secret";
     const { config } = await import("../src/config.js");
     (config.claudeProxy as { token?: string }).token = "secret";
-    const r = await claudeProxyProvider({ model: "haiku", cliPath: null, baseUrl: `http://127.0.0.1:${port}` }).answerQuestion(image, [], "q?");
+    const r = await claudeProxyProvider({ model: "haiku", cliPath: null, baseUrl: `http://127.0.0.1:${port}` }).answerQuestion(media, [], "q?");
     expect(r.answer).toBe("Warm and calm.");
   });
 });

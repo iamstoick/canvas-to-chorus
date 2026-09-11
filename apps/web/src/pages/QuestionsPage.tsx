@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MAX_QUESTIONS, type ComposeRequest } from "@artlyrics/shared";
 import GenrePicker from "../components/GenrePicker";
 import ErrorNote from "../components/ErrorNote";
+import MediaView from "../components/MediaView";
 import QuestionThread from "../components/QuestionThread";
 import { api, type ArtworkDetailResponse } from "../lib/api";
 
@@ -55,7 +56,7 @@ export default function QuestionsPage() {
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] pt-4">
       <div className="space-y-4 lg:sticky lg:top-6 self-start">
-        <img src={artwork.imageUrl} alt={artwork.originalName} className="card w-full object-contain max-h-[70vh]" />
+        <MediaView artwork={artwork} className="max-h-[70vh]" />
         <p className="muted text-xs truncate">{artwork.originalName}</p>
       </div>
 

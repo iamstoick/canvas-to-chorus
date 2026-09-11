@@ -7,7 +7,7 @@ import { conflict } from "../lib/errors.js";
 import { modelLimiter } from "../middleware/rateLimit.js";
 import type { ProviderFactory } from "../services/provider.js";
 import { getSettings } from "../services/settings.js";
-import { toModelImage } from "../services/images.js";
+import { loadModelMedia } from "../services/media.js";
 import type { Storage } from "../services/storage.js";
 import { loadOwnedArtwork } from "./artworks.js";
 import { toQuestionAnswer } from "./serializers.js";
@@ -25,9 +25,9 @@ export function questionsRouter(db: Db, storage: Storage, providers: ProviderFac
         throw conflict("question_limit", `You have already asked ${MAX_QUESTIONS} questions about this artwork.`);
       }
 
-      const image = await toModelImage(await storage.read(art.storagePath));
+      const media = await loadModelMedia(storage, art);
       const provider = providers(await getSettings(db, req.sessionId));
-      const result = await provider.answerQuestion(image, prior, question);
+      const result = await provider.answerQuestion(media, prior, question);
 
       const position = prior.length + 1;
       let row;

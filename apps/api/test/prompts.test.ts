@@ -28,3 +28,12 @@ describe("compose preferences", () => {
     expect(buildComposePrompt([], { genre: "", styleNotes: "" })).toBe(buildComposePrompt([]));
   });
 });
+
+describe("media intro", () => {
+  it("describes a video by frame count and duration, and stays plain for images", async () => {
+    const { mediaIntro } = await import("../src/prompts/analyze.js");
+    expect(mediaIntro({ kind: "image", images: [1] })).toBe("Here is the artwork.");
+    expect(mediaIntro({ kind: "video", images: [1, 2, 3, 4], durationSeconds: 17.6 })).toBe("Here is the artwork: 4 frames sampled in order from a 18-second video, first to last.");
+    expect(buildComposePrompt([], undefined, mediaIntro({ kind: "video", images: [1, 2] }))).toMatch(/^Here is the artwork: 2 frames/);
+  });
+});

@@ -13,9 +13,9 @@ export async function runRetention(db: Db, storage: Storage, days: number): Prom
   const removed = await db
     .delete(artworks)
     .where(lt(artworks.createdAt, cutoff))
-    .returning({ storagePath: artworks.storagePath });
+    .returning({ storagePath: artworks.storagePath, framePaths: artworks.framePaths });
   await Promise.all(
-    [...removed.map((r) => r.storagePath), ...trackPaths].map((p) => storage.remove(p).catch((e) => console.warn("retention: file removal failed", e))),
+    [...removed.flatMap((r) => [r.storagePath, ...(r.framePaths ?? [])]), ...trackPaths].map((p) => storage.remove(p).catch((e) => console.warn("retention: file removal failed", e))),
   );
   return removed.length;
 }

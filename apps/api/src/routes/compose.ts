@@ -6,7 +6,7 @@ import { analyses, questions } from "../db/schema.js";
 import { modelLimiter } from "../middleware/rateLimit.js";
 import type { ProviderFactory } from "../services/provider.js";
 import { getSettings } from "../services/settings.js";
-import { toModelImage } from "../services/images.js";
+import { loadModelMedia } from "../services/media.js";
 import type { Storage } from "../services/storage.js";
 import { loadOwnedArtwork } from "./artworks.js";
 import { toAnalysisRecord } from "./serializers.js";
@@ -19,10 +19,10 @@ export function composeRouter(db: Db, storage: Storage, providers: ProviderFacto
       const prefs = ComposeRequest.parse(req.body ?? {});
       const art = await loadOwnedArtwork(db, req.params.id, req.sessionId);
       const qa = await db.select().from(questions).where(eq(questions.artworkId, art.id)).orderBy(asc(questions.position));
-      const image = await toModelImage(await storage.read(art.storagePath));
+      const media = await loadModelMedia(storage, art);
 
       const provider = providers(await getSettings(db, req.sessionId));
-      const result = await provider.compose(image, qa, prefs);
+      const result = await provider.compose(media, qa, prefs);
 
       const [row] = await db
         .insert(analyses)

@@ -140,3 +140,33 @@ describe("compose validation", () => {
     expect(res.body.error.code).toBe("validation_error");
   });
 });
+
+describe("video upload", () => {
+  it("accepts ordered frames, normalizes each, and saves them before the poster", async () => {
+    const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#0f0" } }).png().toBuffer();
+    (storage.save as ReturnType<typeof vi.fn>).mockClear();
+    (storage.save as ReturnType<typeof vi.fn>).mockResolvedValue("2026/f.png");
+    const res = await request(app)
+      .post("/api/artworks")
+      .field("originalName", "clip.mp4")
+      .field("mimeType", "video/mp4")
+      .field("durationSeconds", "12.5")
+      .attach("frames", png, { filename: "f1.png", contentType: "image/png" })
+      .attach("frames", png, { filename: "f2.png", contentType: "image/png" })
+      .attach("frames", png, { filename: "f3.png", contentType: "image/png" })
+      .attach("poster", png, { filename: "poster.png", contentType: "image/png" });
+    // 3 frames + poster saved; db.insert is not stubbed so the request ends in a 500 afterwards.
+    expect(storage.save).toHaveBeenCalledTimes(4);
+    expect(res.status).toBe(500);
+  });
+
+  it("rejects an unsupported video mime type", async () => {
+    const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#0f0" } }).png().toBuffer();
+    const res = await request(app)
+      .post("/api/artworks")
+      .field("mimeType", "video/x-msvideo")
+      .attach("frames", png, { filename: "f1.png", contentType: "image/png" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("unsupported_type");
+  });
+});

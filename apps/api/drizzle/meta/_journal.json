@@ -36,6 +36,13 @@
       "when": 1788936662018,
       "tag": "0004_genre_preference",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789017004327,
+      "tag": "0005_video_frames",
+      "breakpoints": true
     }
   ]
 }

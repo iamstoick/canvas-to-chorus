@@ -3,10 +3,10 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { Composition, type ComposeRequest, type ProviderSettings } from "@artlyrics/shared";
 import { config } from "../config.js";
 import { unprocessable, upstream } from "../lib/errors.js";
-import { ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
+import { ANALYST_SYSTEM_PROMPT, mediaIntro } from "../prompts/analyze.js";
 import { COMPOSER_SYSTEM_PROMPT, buildComposePrompt } from "../prompts/lyrics.js";
 
-import type { AnalysisProvider, AnswerResult, ComposeResult, ModelImage, QA, Usage } from "./provider.js";
+import type { AnalysisProvider, AnswerResult, ComposeResult, ModelImage, ModelMedia, QA, Usage } from "./provider.js";
 export type { AnswerResult, ComposeResult, ModelImage, Usage };
 
 const clients = new Map<string, Anthropic>();
@@ -33,6 +33,12 @@ function fallbackParams() {
 
 function imageBlock(image: ModelImage): Anthropic.Beta.BetaImageBlockParam {
   return { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } };
+}
+
+/** Frames in order, each labelled, so the model can refer to "frame 3". */
+function mediaBlocks(media: ModelMedia): Anthropic.Beta.BetaContentBlockParam[] {
+  if (media.kind !== "video") return [imageBlock(media.images[0])];
+  return media.images.flatMap((img, i) => [{ type: "text" as const, text: `Frame ${i + 1} of ${media.images.length}` }, imageBlock(img)]);
 }
 
 function usageOf(msg: Anthropic.Beta.BetaMessage): Usage {
@@ -77,7 +83,7 @@ export function anthropicProvider(settings: Pick<ProviderSettings, "model" | "ba
       }
     },
 
-  async answerQuestion(image: ModelImage, prior: QA[], question: string): Promise<AnswerResult> {
+  async answerQuestion(media: ModelMedia, prior: QA[], question: string): Promise<AnswerResult> {
     const history: Anthropic.Beta.BetaMessageParam[] = prior.flatMap((q) => [
       { role: "user", content: q.question },
       { role: "assistant", content: q.answer },
@@ -95,7 +101,7 @@ export function anthropicProvider(settings: Pick<ProviderSettings, "model" | "ba
         messages: [
           {
             role: "user",
-            content: [imageBlock(image), { type: "text", text: "Here is the artwork. I will ask questions about it." }],
+            content: [...mediaBlocks(media), { type: "text", text: `${mediaIntro(media)} I will ask questions about it.` }],
           },
           ...history,
           { role: "user", content: question },
@@ -113,7 +119,7 @@ export function anthropicProvider(settings: Pick<ProviderSettings, "model" | "ba
     return { answer, model: msg.model, usage: usageOf(msg) };
   },
 
-  async compose(image: ModelImage, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
+  async compose(media: ModelMedia, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
     const request: Anthropic.Beta.MessageCreateParamsNonStreaming = {
       model,
       max_tokens: 16000,
@@ -122,7 +128,7 @@ export function anthropicProvider(settings: Pick<ProviderSettings, "model" | "ba
       messages: [
         {
           role: "user",
-          content: [imageBlock(image), { type: "text", text: buildComposePrompt(qa, prefs) }],
+          content: [...mediaBlocks(media), { type: "text", text: buildComposePrompt(qa, prefs, mediaIntro(media)) }],
         },
       ],
       output_config: { format: betaZodOutputFormat(Composition) },

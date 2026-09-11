@@ -78,14 +78,26 @@ export const QuestionAnswer = z.object({
 });
 export type QuestionAnswer = z.infer<typeof QuestionAnswer>;
 
+export const MediaKind = z.enum(["image", "video"]);
+export type MediaKind = z.infer<typeof MediaKind>;
+
+export const ALLOWED_VIDEO_MIME = ["video/mp4", "video/webm", "video/quicktime", "video/x-m4v"] as const;
+export const MAX_VIDEO_FRAMES = 12;
+export const DEFAULT_VIDEO_FRAMES = 8;
+
 export const ArtworkSummary = z.object({
   id: z.string().uuid(),
+  kind: MediaKind.default("image"),
   originalName: z.string(),
   mimeType: z.string(),
   byteSize: z.number().int(),
   width: z.number().int().nullable(),
   height: z.number().int().nullable(),
+  /** Poster image (the image itself, or a representative video frame). */
   imageUrl: z.string(),
+  /** Video only: sampled frames in order. */
+  frameUrls: z.array(z.string()).default([]),
+  durationSeconds: z.number().nullable().default(null),
   createdAt: z.string(),
 });
 export type ArtworkSummary = z.infer<typeof ArtworkSummary>;

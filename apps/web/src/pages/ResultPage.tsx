@@ -5,6 +5,7 @@ import type { ComposeRequest } from "@artlyrics/shared";
 import GenrePicker from "../components/GenrePicker";
 import AnalysisCard from "../components/AnalysisCard";
 import ErrorNote from "../components/ErrorNote";
+import MediaView from "../components/MediaView";
 import LyricsCard from "../components/LyricsCard";
 import SongCard from "../components/SongCard";
 import StyleCard from "../components/StyleCard";
@@ -107,7 +108,7 @@ export default function ResultPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className="space-y-6">
-          <img src={artwork.imageUrl} alt={artwork.originalName} className="card w-full object-contain max-h-[50vh]" />
+          <MediaView artwork={artwork} className="max-h-[50vh]" />
           <AnalysisCard analysis={analysis} />
           <StyleCard style={style} />
         </div>

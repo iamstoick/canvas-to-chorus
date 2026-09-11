@@ -481,3 +481,16 @@ with a turning bridge, lines written for a voice, human imperfection). `Lyrics` 
 in section tags; the Suno request does so and adds "emotive, expressive, dynamic human vocal performance" plus
 the performance notes to the style string. UI shows core, POV, cues, and "How to sing it". Older compositions
 lack the new fields and render without them.
+
+## 26. Video input (added 2026-09-09)
+
+- Browser: `lib/video.ts` seeks a hidden `<video>` to evenly spaced timestamps (8/10/12 frames by length),
+  draws each onto a canvas (max 1280 px), and uploads JPEG frames + a poster. No video bytes reach the server.
+- DB: `artworks.kind`, `frame_paths jsonb`, `duration_seconds` (migration `0005_video_frames`); `storage_path`
+  holds the poster so every existing `imageUrl` consumer keeps working.
+- API: multipart `frames[]`/`poster`, `GET /artworks/:id/frames/:n`, cleanup of frames on delete/retention.
+  `ModelMedia { kind, images[], durationSeconds }` replaces the single `ModelImage` in the provider interface;
+  frames are downscaled to 1024 px to keep 8–12 of them affordable. Anthropic gets labelled image blocks, Ollama
+  an `images` array, the CLI/proxy `frame-NN.jpg` files listed in the prompt. Prompts gained a media intro and
+  video guidance (arc → song arc). Video-specific suggested questions.
+- UI: `MediaView` shows the poster with a clickable frame strip; gallery cards get a video badge.

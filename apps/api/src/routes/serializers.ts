@@ -3,12 +3,15 @@ import type { AnalysisRow, ArtworkRow, QuestionRow } from "../db/schema.js";
 
 export const toArtworkSummary = (a: ArtworkRow): ArtworkSummary => ({
   id: a.id,
+  kind: (a.kind as ArtworkSummary["kind"]) ?? "image",
   originalName: a.originalName,
   mimeType: a.mimeType,
   byteSize: a.byteSize,
   width: a.width,
   height: a.height,
   imageUrl: `/api/artworks/${a.id}/image`,
+  frameUrls: (a.framePaths ?? []).map((_, i) => `/api/artworks/${a.id}/frames/${i}`),
+  durationSeconds: a.durationSeconds ?? null,
   createdAt: a.createdAt.toISOString(),
 });
 

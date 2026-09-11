@@ -6,11 +6,11 @@ import { z } from "zod/v4";
 import { Composition, type ComposeRequest, type ProviderSettings } from "@artlyrics/shared";
 import { config } from "../config.js";
 import { HttpError, unprocessable, upstream } from "../lib/errors.js";
-import { ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
+import { ANALYST_SYSTEM_PROMPT, mediaIntro } from "../prompts/analyze.js";
 import { COMPOSER_SYSTEM_PROMPT, buildComposePrompt } from "../prompts/lyrics.js";
 import { resolveClaudeCli } from "./claudeCliResolve.js";
 import { extractJson } from "./ollama.js";
-import type { AnalysisProvider, AnswerResult, ComposeResult, ModelImage, QA, Usage } from "./provider.js";
+import type { AnalysisProvider, AnswerResult, ComposeResult, ModelImage, ModelMedia, QA, Usage } from "./provider.js";
 
 /** Shape of `claude -p --output-format json` we rely on. */
 export interface CliResult {
@@ -33,7 +33,8 @@ export interface CliRequest {
   systemPrompt: string;
   prompt: string;
   jsonSchema?: unknown;
-  image?: ModelImage;
+  /** One image, or frames in order (written as frame-01.jpg …). */
+  media?: ModelMedia;
 }
 
 export type CliExecutor = (req: CliRequest) => Promise<CliResult>;
@@ -51,6 +52,14 @@ export const IMAGE_FILE: Record<ModelImage["mediaType"], string> = {
   "image/webp": "artwork.webp",
   "image/gif": "artwork.gif",
 };
+
+const EXT: Record<ModelImage["mediaType"], string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+
+/** File names the CLI will Read, in order. */
+export function mediaFiles(media: ModelMedia): string[] {
+  if (media.kind !== "video") return [IMAGE_FILE[media.images[0].mediaType]];
+  return media.images.map((img, i) => `frame-${String(i + 1).padStart(2, "0")}.${EXT[img.mediaType]}`);
+}
 
 export const defaultRunner: ClaudeCliRunner = (bin, args, cwd, timeoutMs) =>
   new Promise((resolve, reject) => {
@@ -120,7 +129,10 @@ export function localExecutor(runner: ClaudeCliRunner = defaultRunner, resolve: 
     }
     const dir = await mkdtemp(path.join(os.tmpdir(), "artlyrics-"));
     try {
-      if (req.image) await writeFile(path.join(dir, IMAGE_FILE[req.image.mediaType]), Buffer.from(req.image.data, "base64"));
+      if (req.media) {
+        const names = mediaFiles(req.media);
+        await Promise.all(req.media.images.map((img, i) => writeFile(path.join(dir, names[i]), Buffer.from(img.data, "base64"))));
+      }
       let out: Awaited<ReturnType<ClaudeCliRunner>>;
       try {
         out = await runner(bin, cliArgs(req), dir, config.claudeCli.timeoutMs);
@@ -136,6 +148,9 @@ export function localExecutor(runner: ClaudeCliRunner = defaultRunner, resolve: 
     }
   };
 }
+
+/** Proxy script contract version this API needs (see scripts/claude-proxy.js). */
+export const REQUIRED_PROXY_VERSION = 2;
 
 /** Sends the request to scripts/claude-proxy.js running on the host. */
 export function proxyExecutor(baseUrl: string, fetchImpl: typeof fetch = fetch, token?: string): CliExecutor {
@@ -177,13 +192,17 @@ function modelOf(prefix: string, r: CliResult, fallback: string): string {
   return `${prefix}/${ids[0] ?? fallback}`;
 }
 
-const readInstruction = (image: ModelImage) => `First, use the Read tool to view the artwork image at ./${IMAGE_FILE[image.mediaType]}.`;
+const readInstruction = (media: ModelMedia) => {
+  const files = mediaFiles(media);
+  if (media.kind !== "video") return `First, use the Read tool to view the artwork image at ./${files[0]}.`;
+  return `${mediaIntro(media)} First, use the Read tool to view every frame, in order: ${files.map((f) => `./${f}`).join(", ")}.`;
+};
 
-export function questionPrompt(image: ModelImage, prior: QA[], question: string): string {
+export function questionPrompt(media: ModelMedia, prior: QA[], question: string): string {
   const transcript = prior.length
     ? `\n\nEarlier questions and your answers about this artwork:\n${prior.map((q, i) => `Q${i + 1}: ${q.question}\nA${i + 1}: ${q.answer}`).join("\n\n")}\n`
     : "";
-  return `${readInstruction(image)}${transcript}\nNow answer this question about the artwork. Reply with the answer only, no preamble:\n${question}`;
+  return `${readInstruction(media)}${transcript}\nNow answer this question about the artwork. Reply with the answer only, no preamble:\n${question}`;
 }
 
 /** Shared provider body for both the direct CLI and the proxy; only the executor and test() differ. */
@@ -209,17 +228,17 @@ function cliBackedProvider(
     name,
     test,
 
-    async answerQuestion(image: ModelImage, prior: QA[], question: string): Promise<AnswerResult> {
-      const r = await run({ systemPrompt: ANALYST_SYSTEM_PROMPT, prompt: questionPrompt(image, prior, question), image });
+    async answerQuestion(media: ModelMedia, prior: QA[], question: string): Promise<AnswerResult> {
+      const r = await run({ systemPrompt: ANALYST_SYSTEM_PROMPT, prompt: questionPrompt(media, prior, question), media });
       const answer = (r.result ?? "").trim();
       if (!answer) throw upstream("empty_answer", "The model returned an empty answer.");
       return { answer, model: modelOf(name, r, model), usage: usageOf(r) };
     },
 
-    async compose(image: ModelImage, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
-      const prompt = `${readInstruction(image)}\n\n${buildComposePrompt(qa, prefs)}`;
+    async compose(media: ModelMedia, qa: QA[], prefs?: ComposeRequest): Promise<ComposeResult> {
+      const prompt = `${readInstruction(media)}\n\n${buildComposePrompt(qa, prefs, media.kind === "video" ? "Using those frames," : "Here is the artwork.")}`;
       for (let attempt = 0; attempt < 2; attempt++) {
-        const r = await run({ systemPrompt: COMPOSER_SYSTEM_PROMPT, prompt, jsonSchema: COMPOSITION_JSON_SCHEMA, image });
+        const r = await run({ systemPrompt: COMPOSER_SYSTEM_PROMPT, prompt, jsonSchema: COMPOSITION_JSON_SCHEMA, media });
         let raw: unknown = r.structured_output;
         if (raw === undefined || raw === null) {
           try {
@@ -289,12 +308,15 @@ export function claudeProxyProvider(
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         signal: AbortSignal.timeout(5000),
       });
-      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; bin?: string | null; version?: string | null; message?: string; error?: { message?: string } };
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; bin?: string | null; version?: string | null; proxyVersion?: number; message?: string; error?: { message?: string } };
       if (res.status === 401) return { ok: false, vision: null, message: "The proxy rejected the request: CLAUDE_PROXY_TOKEN on the API does not match the proxy's token." };
       if (!res.ok || !body.ok) {
         return { ok: false, vision: null, message: body.message ?? body.error?.message ?? `Proxy at ${baseUrl} responded with HTTP ${res.status}.` };
       }
-      return { ok: true, vision: true, message: `Proxy reachable at ${baseUrl}. claude: ${body.bin} (${body.version}). Model: ${model}.` };
+      if ((body.proxyVersion ?? 1) < REQUIRED_PROXY_VERSION) {
+        return { ok: false, vision: null, message: `The Claude CLI proxy at ${baseUrl} is outdated (v${body.proxyVersion ?? 1}, need v${REQUIRED_PROXY_VERSION}). Restart it: npm run claude-proxy` };
+      }
+      return { ok: true, vision: true, message: `Proxy v${body.proxyVersion} reachable at ${baseUrl}. claude: ${body.bin} (${body.version}). Model: ${model}.` };
     } catch {
       return {
         ok: false,

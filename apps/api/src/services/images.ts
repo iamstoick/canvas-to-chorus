@@ -51,10 +51,10 @@ export async function normalizeUpload(input: Buffer): Promise<NormalizedImage> {
   return { bytes: data, mimeType, ext: EXT[mimeType], width: info.width, height: info.height };
 }
 
-/** Downscale for the vision model: longest edge 1568px, JPEG. Cuts tokens, keeps detail. */
-export async function toModelImage(input: Buffer): Promise<{ data: string; mediaType: "image/jpeg" }> {
+/** Downscale for the vision model: longest edge 1568px (smaller for video frames), JPEG. Cuts tokens, keeps detail. */
+export async function toModelImage(input: Buffer, maxEdge = 1568): Promise<{ data: string; mediaType: "image/jpeg" }> {
   const out = await sharp(input, { animated: false })
-    .resize({ width: 1568, height: 1568, fit: "inside", withoutEnlargement: true })
+    .resize({ width: maxEdge, height: maxEdge, fit: "inside", withoutEnlargement: true })
     .flatten({ background: "#ffffff" })
     .jpeg({ quality: 88 })
     .toBuffer();
